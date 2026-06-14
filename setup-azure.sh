@@ -1,19 +1,31 @@
 #!/bin/bash
 # ================================================
-# Music Match — Setup Azure infrastructure
+# Music Match — Setup Azure infrastructure (100% free tier)
 # Lance ce script UNE SEULE FOIS pour créer
 # tous les services Azure DEV + PROD
 # ================================================
 # Usage : bash setup-azure.sh
+#
+# Services créés (tous gratuits) :
+#   - App Service F1 (API)        → gratuit
+#   - PostgreSQL Flexible Server  → gratuit 12 mois
+#   - Blob Storage                → gratuit 12 mois (5 GB)
+#   - Static Web Apps (Next.js)   → gratuit
+#
+# Images Docker : GitHub Container Registry (ghcr.io)
+#   → gratuit, géré par GitHub Actions (pas créé ici)
+#
+# Redis : retiré pour l'instant — pas de free tier Azure pour
+#   Azure Cache for Redis. À ajouter plus tard si besoin
+#   (ex: Upstash a un free tier généreux).
 # ================================================
 
 set -e
 
 LOCATION="francecentral"
-ACR_NAME="musicmatchacr"
 
 echo "================================================"
-echo "  Music Match — Setup Azure"
+echo "  Music Match — Setup Azure (free tier)"
 echo "================================================"
 
 # ─── CONNEXION ───────────────────────────────────
@@ -25,20 +37,7 @@ echo "→ Création des resource groups..."
 az group create --name music-match-dev-rg  --location $LOCATION
 az group create --name music-match-prod-rg --location $LOCATION
 
-# ─── AZURE CONTAINER REGISTRY (partagé) ──────────
-echo "→ Création du Container Registry..."
-az acr create \
-  --resource-group music-match-dev-rg \
-  --name $ACR_NAME \
-  --sku Basic \
-  --admin-enabled true
-
-ACR_USERNAME=$(az acr credential show --name $ACR_NAME --query username -o tsv)
-ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query "passwords[0].value" -o tsv)
-echo "  ACR Username : $ACR_USERNAME"
-echo "  ACR Password : [récupéré — à ajouter dans GitHub Secrets]"
-
-# ─── APP SERVICE PLANS ───────────────────────────
+# ─── APP SERVICE PLANS (Free F1) ─────────────────
 echo "→ Création des App Service plans (Free F1)..."
 az appservice plan create \
   --name music-match-dev-plan \
@@ -50,36 +49,26 @@ az appservice plan create \
   --resource-group music-match-prod-rg \
   --sku FREE --is-linux
 
-# ─── WEB APPS (API) ──────────────────────────────
+# ─── WEB APPS (API) — images depuis GitHub Container Registry ──
 echo "→ Création des Web Apps..."
+echo "  NOTE : les images ghcr.io doivent être PUBLIQUES pour que"
+echo "  App Service puisse les tirer sans credentials."
+echo "  → Après le premier push, va sur GitHub > Packages >"
+echo "    music-match-api > Package settings > Change visibility > Public"
+
 az webapp create \
   --resource-group music-match-dev-rg \
   --plan music-match-dev-plan \
   --name music-match-api-dev \
-  --deployment-container-image-name $ACR_NAME.azurecr.io/music-match-api:dev-latest
+  --deployment-container-image-name ghcr.io/aminovic89/music-match-api:dev-latest
 
 az webapp create \
   --resource-group music-match-prod-rg \
   --plan music-match-prod-plan \
   --name music-match-api-prod \
-  --deployment-container-image-name $ACR_NAME.azurecr.io/music-match-api:latest
+  --deployment-container-image-name ghcr.io/aminovic89/music-match-api:latest
 
-# Autoriser l'accès ACR depuis les Web Apps
-az webapp config container set \
-  --name music-match-api-dev \
-  --resource-group music-match-dev-rg \
-  --docker-registry-server-url https://$ACR_NAME.azurecr.io \
-  --docker-registry-server-user $ACR_USERNAME \
-  --docker-registry-server-password $ACR_PASSWORD
-
-az webapp config container set \
-  --name music-match-api-prod \
-  --resource-group music-match-prod-rg \
-  --docker-registry-server-url https://$ACR_NAME.azurecr.io \
-  --docker-registry-server-user $ACR_USERNAME \
-  --docker-registry-server-password $ACR_PASSWORD
-
-# ─── POSTGRESQL ──────────────────────────────────
+# ─── POSTGRESQL (free tier 12 mois) ──────────────
 echo "→ Création des bases de données PostgreSQL..."
 az postgres flexible-server create \
   --resource-group music-match-dev-rg \
@@ -89,7 +78,8 @@ az postgres flexible-server create \
   --admin-password "DevPassword123!" \
   --sku-name Standard_B1ms \
   --tier Burstable \
-  --version 15
+  --version 15 \
+  --public-access 0.0.0.0-255.255.255.255
 
 az postgres flexible-server create \
   --resource-group music-match-prod-rg \
@@ -99,7 +89,8 @@ az postgres flexible-server create \
   --admin-password "ProdPassword456!" \
   --sku-name Standard_B1ms \
   --tier Burstable \
-  --version 15
+  --version 15 \
+  --public-access 0.0.0.0-255.255.255.255
 
 # Créer les databases
 az postgres flexible-server db create \
@@ -112,23 +103,7 @@ az postgres flexible-server db create \
   --server-name music-match-db-prod \
   --database-name musicmatch
 
-# ─── REDIS ───────────────────────────────────────
-echo "→ Création des caches Redis..."
-az redis create \
-  --resource-group music-match-dev-rg \
-  --name music-match-redis-dev \
-  --location $LOCATION \
-  --sku Basic \
-  --vm-size C0
-
-az redis create \
-  --resource-group music-match-prod-rg \
-  --name music-match-redis-prod \
-  --location $LOCATION \
-  --sku Basic \
-  --vm-size C0
-
-# ─── BLOB STORAGE ────────────────────────────────
+# ─── BLOB STORAGE (free tier 12 mois — 5GB) ──────
 echo "→ Création du Blob Storage..."
 az storage account create \
   --name musicmatchstorage \
@@ -141,12 +116,7 @@ az storage container create \
   --account-name musicmatchstorage \
   --public-access blob
 
-az storage container create \
-  --name backups \
-  --account-name musicmatchstorage \
-  --public-access off
-
-# ─── STATIC WEB APPS ─────────────────────────────
+# ─── STATIC WEB APPS (free) ──────────────────────
 echo "→ Création des Static Web Apps..."
 az staticwebapp create \
   --name music-match-web-dev \
@@ -158,7 +128,7 @@ az staticwebapp create \
   --resource-group music-match-prod-rg \
   --location "West Europe"
 
-# ─── CREDENTIALS GITHUB ACTIONS ──────────────────
+# ─── CREDENTIALS GITHUB ACTIONS (pour déployer sur App Service) ──
 echo "→ Création des credentials GitHub Actions..."
 DEV_CREDS=$(az ad sp create-for-rbac \
   --name music-match-github-dev \
@@ -180,9 +150,6 @@ echo "================================================"
 echo ""
 echo "→ Settings > Secrets and variables > Actions"
 echo ""
-echo "ACR_USERNAME       : $ACR_USERNAME"
-echo "ACR_PASSWORD       : $ACR_PASSWORD"
-echo ""
 echo "AZURE_CREDENTIALS_DEV :"
 echo $DEV_CREDS
 echo ""
@@ -194,6 +161,15 @@ az staticwebapp secrets list --name music-match-web-dev --query "properties.apiK
 echo ""
 echo "AZURE_STATIC_WEB_APPS_TOKEN_PROD :"
 az staticwebapp secrets list --name music-match-web-prod --query "properties.apiKey" -o tsv
+echo ""
+echo "================================================"
+echo "  ⚠️  ÉTAPE MANUELLE OBLIGATOIRE"
+echo "================================================"
+echo "Après le premier 'git push' sur develop ou main :"
+echo "1. Va sur https://github.com/aminovic89/music-match/pkgs/container/music-match-api"
+echo "2. Package settings > Change visibility > Public"
+echo "(sinon Azure App Service ne pourra pas tirer l'image)"
+echo "================================================"
 echo ""
 echo "URLs DEV  : https://music-match-api-dev.azurewebsites.net"
 echo "URLs PROD : https://music-match-api-prod.azurewebsites.net"

@@ -8,8 +8,8 @@ on:
 
 env:
   NODE_VERSION: '20.x'
-  ACR_NAME: musicmatchacr
-  IMAGE_NAME: music-match-api
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/music-match-api
   AZURE_WEBAPP_NAME_DEV: music-match-api-dev
 
 jobs:
@@ -31,14 +31,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports: ['6379:6379']
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - name: Checkout
@@ -56,11 +48,15 @@ jobs:
       - name: Lint
         run: npm run lint --workspace=apps/api
 
+      - name: Initialize test database schema
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          PGPASSWORD=postgres psql -h localhost -U postgres -d musicmatch_test -f apps/api/src/database/init.sql
+
       - name: Run tests
         working-directory: apps/api
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/musicmatch_test
-          REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-ci
           NODE_ENV: test
         run: npm test -- --coverage
@@ -72,12 +68,16 @@ jobs:
           name: coverage-report
           path: apps/api/coverage/
 
-  # ─── 2. BUILD & PUSH IMAGE DOCKER → ACR ─────────────────
+  # ─── 2. BUILD & PUSH IMAGE DOCKER → GHCR (gratuit) ──────
   build:
-    name: Build & Push Docker → ACR
+    name: Build & Push Docker → GHCR
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'push'
+
+    permissions:
+      contents: read
+      packages: write
 
     outputs:
       image_tag: ${{ steps.meta.outputs.image_tag }}
@@ -86,12 +86,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Login to Azure Container Registry
-        uses: azure/docker-login@v1
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          login-server: ${{ env.ACR_NAME }}.azurecr.io
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set image tag
         id: meta
@@ -102,7 +102,7 @@ jobs:
       - name: Build & Push image
         working-directory: apps/api
         run: |
-          IMAGE=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}
+          IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           TAG=${{ steps.meta.outputs.image_tag }}
           docker build -t ${IMAGE}:${TAG} -t ${IMAGE}:dev-latest .
           docker push ${IMAGE}:${TAG}
@@ -125,7 +125,7 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME_DEV }}
-          images: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}
 
       - name: Run DB migrations DEV
         uses: azure/CLI@v1
