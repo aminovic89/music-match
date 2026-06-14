@@ -1,0 +1,7 @@
+{
+  "name": "@music-match/types",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.js",
+  "description": "Types et schémas partagés (correspond au schéma BDD défini dans MusicMatch_Documentation.docx)"
+}

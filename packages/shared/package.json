@@ -1,0 +1,7 @@
+{
+  "name": "@music-match/shared",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.js",
+  "description": "Code partagé entre apps/api, apps/web et apps/mobile (constantes, helpers de scoring, validation)"
+}

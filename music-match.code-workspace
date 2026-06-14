@@ -1,0 +1,59 @@
+{
+  "folders": [
+    { "name": "root",         "path": "." },
+    { "name": "api",          "path": "apps/api" },
+    { "name": "mobile",       "path": "apps/mobile" },
+    { "name": "web",          "path": "apps/web" },
+    { "name": "shared",       "path": "packages/shared" }
+  ],
+  "settings": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+    "editor.rulers": [100],
+    "eslint.workingDirectories": ["apps/api", "apps/web", "apps/mobile"],
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.next": true,
+      "**/dist": true
+    },
+    "docker.composeFiles": ["docker-compose.yml"],
+    "terminal.integrated.env.osx": {
+      "NODE_ENV": "development"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "ms-azuretools.vscode-docker",
+      "ms-azuretools.vscode-azureappservice",
+      "ms-azuretools.vscode-azurestorage",
+      "ms-azuretools.vscode-azuredatabases",
+      "GitHub.copilot",
+      "GitHub.copilot-chat",
+      "msjsdiag.vscode-react-native",
+      "bradlc.vscode-tailwindcss",
+      "Prisma.prisma",
+      "humao.rest-client",
+      "ms-vscode.vscode-node-azure-pack",
+      "eamodio.gitlens",
+      "christian-kohler.path-intellisense",
+      "formulahendry.auto-rename-tag",
+      "streetsidesoftware.code-spell-checker-french"
+    ]
+  },
+  "launch": {
+    "configurations": [
+      {
+        "type": "node",
+        "request": "attach",
+        "name": "Attach to Docker API",
+        "port": 9229,
+        "restart": true,
+        "localRoot": "${workspaceFolder}/apps/api",
+        "remoteRoot": "/app"
+      }
+    ]
+  }
+}

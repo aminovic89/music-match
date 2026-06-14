@@ -1,0 +1,81 @@
+services:
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.dev
+    container_name: music-match-api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/api:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/musicmatch
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-secret-change-in-prod
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
+      DEEZER_CLIENT_ID: ${DEEZER_CLIENT_ID}
+      PORT: 3000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - music-match-network
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    container_name: music-match-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: musicmatch
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./apps/api/src/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - music-match-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: music-match-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - music-match-network
+
+  adminer:
+    image: adminer:latest
+    container_name: music-match-adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - music-match-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  music-match-network:
+    driver: bridge
