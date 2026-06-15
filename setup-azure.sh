@@ -32,6 +32,14 @@ echo "================================================"
 echo "→ Connexion Azure..."
 az login
 
+# ─── ENREGISTREMENT DES PROVIDERS ────────────────
+# Nécessaire sur une souscription toute neuve, sinon erreur
+# "MissingSubscriptionRegistration" / "SubscriptionNotFound"
+echo "→ Enregistrement des providers Azure (peut prendre 1-2 min)..."
+az provider register --namespace Microsoft.DBforPostgreSQL --wait
+az provider register --namespace Microsoft.Storage --wait
+az provider register --namespace Microsoft.Web --wait
+
 # ─── RESOURCE GROUPS ─────────────────────────────
 echo "→ Création des resource groups..."
 az group create --name music-match-dev-rg  --location $LOCATION
@@ -92,28 +100,42 @@ az postgres flexible-server create \
   --version 15 \
   --public-access 0.0.0.0-255.255.255.255
 
-# Créer les databases
+# Créer les databases (--name, pas --database-name, depuis Azure CLI 2.6x+)
 az postgres flexible-server db create \
   --resource-group music-match-dev-rg \
   --server-name music-match-db-dev \
-  --database-name musicmatch
+  --name musicmatch
 
 az postgres flexible-server db create \
   --resource-group music-match-prod-rg \
   --server-name music-match-db-prod \
-  --database-name musicmatch
+  --name musicmatch
 
 # ─── BLOB STORAGE (free tier 12 mois — 5GB) ──────
 echo "→ Création du Blob Storage..."
+# ⚠️ STORAGE_NAME doit être unique MONDIALEMENT (3-24 caractères, minuscules/chiffres).
+# "musicmatchstorage" est probablement déjà pris — change-le si besoin
+# (ex: musicmatchdev, musicmatch<tonpseudo>).
+STORAGE_NAME="musicmatchdev"
+
 az storage account create \
-  --name musicmatchstorage \
+  --name $STORAGE_NAME \
   --resource-group music-match-dev-rg \
   --location $LOCATION \
-  --sku Standard_LRS
+  --sku Standard_LRS \
+  --allow-blob-public-access true
+
+# Récupérer la clé pour créer le container (--auth-mode login échoue souvent
+# sur un compte tout neuf sans rôle RBAC Storage assigné)
+STORAGE_KEY=$(az storage account keys list \
+  --account-name $STORAGE_NAME \
+  --resource-group music-match-dev-rg \
+  --query "[0].value" -o tsv)
 
 az storage container create \
   --name profile-photos \
-  --account-name musicmatchstorage \
+  --account-name $STORAGE_NAME \
+  --account-key "$STORAGE_KEY" \
   --public-access blob
 
 # ─── STATIC WEB APPS (free) ──────────────────────
