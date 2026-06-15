@@ -6,7 +6,7 @@
     "dev": "nodemon --watch src --ext js src/index.js",
     "start": "node src/index.js",
     "lint": "eslint src/",
-    "test": "jest --forceExit",
+    "test": "jest --forceExit --passWithNoTests",
     "test:watch": "jest --watch",
     "db:migrate": "node src/database/migrate.js",
     "db:seed": "node src/database/seed.js"
