@@ -126,13 +126,17 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME_DEV }}
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}
 
-      - name: Run DB migrations DEV
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az webapp ssh --name ${{ env.AZURE_WEBAPP_NAME_DEV }} \
-              --resource-group music-match-dev-rg \
-              --command "cd /app && node src/database/migrate.js"
+      # ⚠️ DÉSACTIVÉ : src/database/migrate.js n'existe pas encore (Sprint 1
+      # pas commencé) + l'image mcr.microsoft.com/azure-cli a un souci
+      # d'auth anonyme sur le registre Microsoft en ce moment.
+      # Réactiver une fois le Sprint 1 (migrations) en place.
+      # - name: Run DB migrations DEV
+      #   uses: azure/CLI@v1
+      #   with:
+      #     inlineScript: |
+      #       az webapp ssh --name ${{ env.AZURE_WEBAPP_NAME_DEV }} \
+      #         --resource-group music-match-dev-rg \
+      #         --command "cd /app && node src/database/migrate.js"
 
       - name: Health check DEV
         run: |
