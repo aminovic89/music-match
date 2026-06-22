@@ -53,6 +53,13 @@ jobs:
           sudo apt-get update && sudo apt-get install -y postgresql-client
           PGPASSWORD=postgres psql -h localhost -U postgres -d musicmatch_test -f apps/api/src/database/init.sql
 
+      - name: Run migrations
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/musicmatch_test
+          NODE_ENV: test
+        run: node src/database/migrate.js
+
       - name: Run tests
         working-directory: apps/api
         env:
@@ -126,21 +133,9 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME_DEV }}
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}
 
-      # ⚠️ DÉSACTIVÉ : src/database/migrate.js n'existe pas encore (Sprint 1
-      # pas commencé) + l'image mcr.microsoft.com/azure-cli a un souci
-      # d'auth anonyme sur le registre Microsoft en ce moment.
-      # Réactiver une fois le Sprint 1 (migrations) en place.
-      # - name: Run DB migrations DEV
-      #   uses: azure/CLI@v1
-      #   with:
-      #     inlineScript: |
-      #       az webapp ssh --name ${{ env.AZURE_WEBAPP_NAME_DEV }} \
-      #         --resource-group music-match-dev-rg \
-      #         --command "cd /app && node src/database/migrate.js"
-
       - name: Health check DEV
         run: |
-          sleep 15
+          sleep 30
           curl --fail https://${{ env.AZURE_WEBAPP_NAME_DEV }}.azurewebsites.net/health \
             || (echo "Health check failed" && exit 1)
 
@@ -158,8 +153,6 @@ jobs:
 
   # ─── 4. DEPLOY WEB DEV → AZURE STATIC WEB APPS ──────────
   # ⚠️ DÉSACTIVÉ : apps/web n'existe pas encore (Next.js pas développé).
-  # Remettre `if: github.event_name == 'push'` une fois le projet
-  # Next.js initialisé dans apps/web.
   deploy-web-dev:
     name: Deploy Web → Azure Static DEV
     runs-on: ubuntu-latest
