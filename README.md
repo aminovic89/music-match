@@ -183,3 +183,6 @@ npm run lint                      # Lint tout le monorepo
 npm run db:migrate --workspace=apps/api   # Appliquer les migrations
 npm run db:seed --workspace=apps/api      # Insérer des données de test
 ```
+
+## Statut DEV
+Pipeline CI/CD opérationnel — lun. 22 juin 2026 22:48:12 CEST
