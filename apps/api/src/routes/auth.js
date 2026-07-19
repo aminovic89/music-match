@@ -1,8 +1,10 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const Joi = require('joi');
+const crypto = require('crypto');
 const db = require('../database/db');
 const { signToken } = require('../utils/jwt');
+const spotify = require('../services/spotify');
 
 const router = express.Router();
 
@@ -86,14 +88,75 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
-// GET /api/auth/spotify — TODO Sprint 2
-router.get('/spotify', (_req, res) => {
-  res.status(501).json({ message: 'Not implemented yet — Sprint 2' });
+// GET /api/auth/spotify — démarre le flow OAuth
+router.get('/spotify', (req, res) => {
+  const state = crypto.randomBytes(16).toString('hex');
+  // En prod on stockerait le state en session/Redis pour valider au callback
+  const authUrl = spotify.getAuthUrl(state);
+  res.redirect(authUrl);
 });
 
-// GET /api/auth/spotify/callback — TODO Sprint 2
-router.get('/spotify/callback', (_req, res) => {
-  res.status(501).json({ message: 'Not implemented yet — Sprint 2' });
+// GET /api/auth/spotify/callback — reçoit le code et échange contre un token
+router.get('/spotify/callback', async (req, res, next) => {
+  try {
+    const { code, error, state } = req.query; // eslint-disable-line no-unused-vars
+
+    if (error) {
+      return res.status(400).json({ error: `Spotify OAuth error: ${error}` });
+    }
+
+    if (!code) {
+      return res.status(400).json({ error: 'Code OAuth manquant' });
+    }
+
+    // Échange le code contre les tokens Spotify
+    const tokens = await spotify.exchangeCode(code);
+    const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+
+    // Récupère le profil Spotify de l'utilisateur pour l'identifier
+    const axios = require('axios');
+    const spotifyUser = await axios.get('https://api.spotify.com/v1/me', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+
+    const spotifyEmail = spotifyUser.data.email;
+
+    // Trouve l'utilisateur Music Match par email (ou le crée si premier login Spotify)
+    let userResult = await db.query('SELECT * FROM users WHERE email = $1', [spotifyEmail]);
+    let user;
+
+    if (userResult.rows.length === 0) {
+      // Créer un compte minimal si l'utilisateur n'existe pas
+      const insertResult = await db.query(
+        `INSERT INTO users (email, first_name, is_verified)
+         VALUES ($1, $2, true)
+         RETURNING id, email, first_name, age, intent, city, gender,
+                   looking_for, is_verified, is_premium, created_at`,
+        [spotifyEmail, spotifyUser.data.display_name || 'Utilisateur']
+      );
+      user = insertResult.rows[0];
+    } else {
+      user = userResult.rows[0];
+    }
+
+    // Stocker les tokens Spotify
+    await db.query(
+      `INSERT INTO oauth_tokens (user_id, provider, access_token, refresh_token, expires_at)
+       VALUES ($1, 'spotify', $2, $3, $4)
+       ON CONFLICT (user_id, provider)
+       DO UPDATE SET access_token = $2, refresh_token = $3, expires_at = $4`,
+      [user.id, tokens.access_token, tokens.refresh_token, expiresAt]
+    );
+
+    // Génère un token JWT Music Match
+    const jwtToken = signToken({ sub: user.id });
+
+    // Redirige vers le frontend avec le token
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    res.redirect(`${frontendUrl}/auth/callback?token=${jwtToken}`);
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;
