@@ -176,7 +176,6 @@ jobs:
         working-directory: apps/web
         env:
           NEXT_PUBLIC_API_URL: https://${{ env.AZURE_WEBAPP_NAME_PROD }}.azurewebsites.net
-          NODE_ENV: production
         run: |
           npm ci
           npm run build
