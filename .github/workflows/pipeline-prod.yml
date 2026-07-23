@@ -9,6 +9,8 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/music-match-api
   AZURE_WEBAPP_NAME_PROD: music-match-api-prod
+  AZURE_STATIC_WEB_APP_NAME_PROD: music-match-web-prod
+  AZURE_RESOURCE_GROUP_PROD: music-match-prod-rg
 
 jobs:
   # ─── 1. LINT & TESTS ─────────────────────────────────────
@@ -117,6 +119,17 @@ jobs:
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+      - name: Set FRONTEND_URL app setting (CORS)
+        run: |
+          SWA_HOSTNAME=$(az staticwebapp show \
+            --name ${{ env.AZURE_STATIC_WEB_APP_NAME_PROD }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP_PROD }} \
+            --query "defaultHostname" -o tsv)
+          az webapp config appsettings set \
+            --name ${{ env.AZURE_WEBAPP_NAME_PROD }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP_PROD }} \
+            --settings FRONTEND_URL="https://${SWA_HOSTNAME}"
 
       - name: Deploy API to App Service PROD
         uses: azure/webapps-deploy@v3

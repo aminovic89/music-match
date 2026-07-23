@@ -11,6 +11,8 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/music-match-api
   AZURE_WEBAPP_NAME_DEV: music-match-api-dev
+  AZURE_STATIC_WEB_APP_NAME_DEV: music-match-web-dev
+  AZURE_RESOURCE_GROUP_DEV: music-match-dev-rg
 
 jobs:
   # ─── 1. LINT & TESTS ─────────────────────────────────────
@@ -127,6 +129,17 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
 
+      - name: Set FRONTEND_URL app setting (CORS)
+        run: |
+          SWA_HOSTNAME=$(az staticwebapp show \
+            --name ${{ env.AZURE_STATIC_WEB_APP_NAME_DEV }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP_DEV }} \
+            --query "defaultHostname" -o tsv)
+          az webapp config appsettings set \
+            --name ${{ env.AZURE_WEBAPP_NAME_DEV }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP_DEV }} \
+            --settings FRONTEND_URL="https://${SWA_HOSTNAME}"
+
       - name: Deploy API to App Service DEV
         uses: azure/webapps-deploy@v3
         with:
@@ -152,12 +165,10 @@ jobs:
             })
 
   # ─── 4. DEPLOY WEB DEV → AZURE STATIC WEB APPS ──────────
-  # ⚠️ DÉSACTIVÉ : apps/web n'existe pas encore (Next.js pas développé).
   deploy-web-dev:
     name: Deploy Web → Azure Static DEV
     runs-on: ubuntu-latest
     needs: test
-    if: false
 
     steps:
       - name: Checkout
