@@ -1,5 +1,4 @@
 -- Music Match — Schema initial
--- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Enum types
@@ -9,11 +8,12 @@ CREATE TYPE source_type AS ENUM ('spotify', 'deezer', 'soundcloud', 'manual');
 CREATE TYPE match_status AS ENUM ('pending', 'active', 'expired', 'blocked');
 CREATE TYPE oauth_provider AS ENUM ('spotify', 'deezer', 'soundcloud');
 
--- USERS
+-- USERS (password_hash inclus dès le départ)
 CREATE TABLE users (
   id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email           VARCHAR(255) UNIQUE,
   phone           VARCHAR(20) UNIQUE,
+  password_hash   VARCHAR(255),
   first_name      VARCHAR(100) NOT NULL,
   avatar_url      TEXT,
   age             INT CHECK (age >= 18 AND age <= 99),
