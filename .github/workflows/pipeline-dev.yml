@@ -196,3 +196,4 @@ jobs:
           action: upload
           app_location: apps/web
           output_location: out
+          skip_app_build: true
