@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://music-match-api-dev.azurewebsites.net';
 
@@ -46,8 +47,23 @@ export default function HomePage() {
           {user ? `Salut ${user.first_name} !` : 'Bienvenue'}
         </h1>
         <p className="text-gray-400 text-sm mb-8">
-          Ton profil est prêt. Les matchs arrivent bientôt ici.
+          Ton profil est prêt.
         </p>
+
+        <div className="flex flex-col gap-3 mb-8">
+          <Link
+            href="/discover"
+            className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl transition-colors"
+          >
+            🔍 Découvrir des profils
+          </Link>
+          <Link
+            href="/matches"
+            className="w-full py-3 border border-gray-700 text-gray-300 rounded-xl hover:border-gray-500 transition-colors"
+          >
+            💜 Mes matchs
+          </Link>
+        </div>
 
         <button
           onClick={handleLogout}
