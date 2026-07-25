@@ -22,7 +22,7 @@ export default function HomePage() {
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-        setUser(data);
+        setUser(data.user);
       })
       .catch((err) => setError(err.message));
   }, [router]);
