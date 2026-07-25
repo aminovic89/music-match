@@ -53,6 +53,13 @@ jobs:
           sudo apt-get update && sudo apt-get install -y postgresql-client
           PGPASSWORD=postgres psql -h localhost -U postgres -d musicmatch_test -f apps/api/src/database/init.sql
 
+      - name: Run migrations
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/musicmatch_test
+          NODE_ENV: test
+        run: node src/database/migrate.js
+
       - name: Run tests
         working-directory: apps/api
         env:
