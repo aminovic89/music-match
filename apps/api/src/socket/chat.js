@@ -1,21 +1,64 @@
 /**
  * Socket.io — chat éphémère
- * Sprint 4 : implémenter l'envoi/réception de messages temps réel
- * avec TTL (expires_at) et notifications "typing..."
  */
-module.exports = function chatSocket(io) {
-  io.on('connection', (socket) => {
-    console.log(`Socket connected: ${socket.id}`);
+const { verifyToken } = require('../utils/jwt');
+const chat = require('../services/chat');
 
-    // TODO Sprint 4 : rejoindre la room de la conversation
-    socket.on('join_conversation', (conversationId) => {
-      socket.join(`conversation:${conversationId}`);
+module.exports = function chatSocket(io) {
+  io.use((socket, next) => {
+    const token = socket.handshake.auth && socket.handshake.auth.token;
+    if (!token) {
+      return next(new Error('Authentification requise'));
+    }
+    try {
+      const payload = verifyToken(token);
+      socket.userId = payload.sub;
+      next();
+    } catch (_err) {
+      next(new Error('Token invalide ou expiré'));
+    }
+  });
+
+  io.on('connection', (socket) => {
+    console.log(`Socket connected: ${socket.id} (user ${socket.userId})`);
+
+    socket.on('join_conversation', async (conversationId, callback) => {
+      const ack = typeof callback === 'function' ? callback : () => {};
+      if (!conversationId) {
+        return ack({ ok: false, error: 'conversationId requis' });
+      }
+      try {
+        await chat.assertParticipant(conversationId, socket.userId);
+        socket.join(`conversation:${conversationId}`);
+        ack({ ok: true });
+      } catch (err) {
+        ack({ ok: false, error: err.message });
+      }
     });
 
-    // TODO Sprint 4 : envoyer un message éphémère
-    socket.on('send_message', (data) => {
-      // Valider, enregistrer en base avec expires_at, puis broadcast
-      socket.to(`conversation:${data.conversationId}`).emit('new_message', data);
+    socket.on('send_message', async (data, callback) => {
+      const ack = typeof callback === 'function' ? callback : () => {};
+      const conversationId = data && data.conversationId;
+      if (!conversationId) {
+        return ack({ ok: false, error: 'conversationId requis' });
+      }
+      try {
+        const message = await chat.createMessage(conversationId, socket.userId, data.content);
+        io.to(`conversation:${conversationId}`).emit('new_message', message);
+        ack({ ok: true, message });
+      } catch (err) {
+        ack({ ok: false, error: err.message });
+      }
+    });
+
+    socket.on('typing', (conversationId) => {
+      if (!conversationId) return;
+      socket.to(`conversation:${conversationId}`).emit('typing', { userId: socket.userId });
+    });
+
+    socket.on('stop_typing', (conversationId) => {
+      if (!conversationId) return;
+      socket.to(`conversation:${conversationId}`).emit('stop_typing', { userId: socket.userId });
     });
 
     socket.on('disconnect', () => {
