@@ -12,41 +12,58 @@ const TOKEN_KEY = 'mm_token';
 
 type Screen = 'loading' | 'login' | 'register' | 'onboarding' | 'home';
 
+// SecureStore n'a pas d'implémentation sur web (et pourrait échouer sur un
+// vrai device pour d'autres raisons) — on ne bloque jamais la navigation
+// sur un échec de persistance, on tente juste au mieux.
+async function persistToken(value: string | null) {
+  try {
+    if (value) {
+      await SecureStore.setItemAsync(TOKEN_KEY, value);
+    } else {
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+    }
+  } catch (_err) {
+    // best-effort — la session reste valide en mémoire pour cette ouverture
+  }
+}
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    SecureStore.getItemAsync(TOKEN_KEY).then((stored) => {
-      if (stored) {
-        apiClient.setToken(stored);
-        setToken(stored);
-        setScreen('home');
-      } else {
-        setScreen('login');
-      }
-    });
+    SecureStore.getItemAsync(TOKEN_KEY)
+      .then((stored) => {
+        if (stored) {
+          apiClient.setToken(stored);
+          setToken(stored);
+          setScreen('home');
+        } else {
+          setScreen('login');
+        }
+      })
+      .catch(() => setScreen('login'));
   }, []);
 
-  const handleLoginSuccess = async (newToken: string) => {
-    await SecureStore.setItemAsync(TOKEN_KEY, newToken);
+  const handleLoginSuccess = (newToken: string) => {
     apiClient.setToken(newToken);
     setToken(newToken);
     setScreen('home');
+    persistToken(newToken);
   };
 
-  const handleRegisterSuccess = async (newToken: string) => {
-    await SecureStore.setItemAsync(TOKEN_KEY, newToken);
+  const handleRegisterSuccess = (newToken: string) => {
     apiClient.setToken(newToken);
     setToken(newToken);
     setScreen('onboarding');
+    persistToken(newToken);
   };
 
-  const handleLogout = async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+  const handleLogout = () => {
     apiClient.setToken(null);
     setToken(null);
     setScreen('login');
+    persistToken(null);
   };
 
   if (screen === 'loading') {
