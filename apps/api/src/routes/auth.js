@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const db = require('../database/db');
 const { signToken } = require('../utils/jwt');
 const spotify = require('../services/spotify');
+const deezer = require('../services/deezer');
 const { sendPasswordResetEmail } = require('../services/email');
 
 const router = express.Router();
@@ -222,6 +223,77 @@ router.get('/spotify/callback', async (req, res, next) => {
        ON CONFLICT (user_id, provider)
        DO UPDATE SET access_token = $2, refresh_token = $3, expires_at = $4`,
       [user.id, tokens.access_token, tokens.refresh_token, expiresAt]
+    );
+
+    // Génère un token JWT Music Match
+    const jwtToken = signToken({ sub: user.id });
+
+    // Redirige vers le frontend avec le token
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    res.redirect(`${frontendUrl}/auth/callback?token=${jwtToken}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/auth/deezer — démarre le flow OAuth
+router.get('/deezer', (req, res) => {
+  const state = crypto.randomBytes(16).toString('hex');
+  // En prod on stockerait le state en session/Redis pour valider au callback
+  const authUrl = deezer.getAuthUrl(state);
+  res.redirect(authUrl);
+});
+
+// GET /api/auth/deezer/callback — reçoit le code et échange contre un token
+router.get('/deezer/callback', async (req, res, next) => {
+  try {
+    const { code, error, state } = req.query; // eslint-disable-line no-unused-vars
+
+    if (error) {
+      return res.status(400).json({ error: `Deezer OAuth error: ${error}` });
+    }
+
+    if (!code) {
+      return res.status(400).json({ error: 'Code OAuth manquant' });
+    }
+
+    // Échange le code contre le token Deezer
+    const tokens = await deezer.exchangeCode(code);
+    const expiresAt = tokens.expires ? new Date(Date.now() + tokens.expires * 1000) : null;
+
+    // Récupère le profil Deezer de l'utilisateur pour l'identifier
+    const axios = require('axios');
+    const deezerUser = await axios.get('https://api.deezer.com/user/me', {
+      params: { access_token: tokens.access_token },
+    });
+
+    const deezerEmail = deezerUser.data.email;
+
+    // Trouve l'utilisateur Music Match par email (ou le crée si premier login Deezer)
+    let userResult = await db.query('SELECT * FROM users WHERE email = $1', [deezerEmail]);
+    let user;
+
+    if (userResult.rows.length === 0) {
+      // Créer un compte minimal si l'utilisateur n'existe pas
+      const insertResult = await db.query(
+        `INSERT INTO users (email, first_name, is_verified)
+         VALUES ($1, $2, true)
+         RETURNING id, email, first_name, age, intent, city, gender,
+                   looking_for, is_verified, is_premium, created_at`,
+        [deezerEmail, deezerUser.data.first_name || deezerUser.data.name || 'Utilisateur']
+      );
+      user = insertResult.rows[0];
+    } else {
+      user = userResult.rows[0];
+    }
+
+    // Stocker le token Deezer (pas de refresh token dans ce flow)
+    await db.query(
+      `INSERT INTO oauth_tokens (user_id, provider, access_token, refresh_token, expires_at)
+       VALUES ($1, 'deezer', $2, NULL, $3)
+       ON CONFLICT (user_id, provider)
+       DO UPDATE SET access_token = $2, expires_at = $3`,
+      [user.id, tokens.access_token, expiresAt]
     );
 
     // Génère un token JWT Music Match

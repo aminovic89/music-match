@@ -3,6 +3,7 @@ const app = require('../app');
 const db = require('../database/db');
 const { signToken } = require('../utils/jwt');
 const spotify = require('../services/spotify');
+const deezer = require('../services/deezer');
 
 // Mock le service Spotify pour ne pas appeler l'API réelle
 jest.mock('../services/spotify', () => ({
@@ -12,6 +13,14 @@ jest.mock('../services/spotify', () => ({
   getAudioFeatures: jest.fn(),
   computeMusicProfile: jest.fn(),
   deriveMoods: jest.fn(),
+  exchangeCode: jest.fn(),
+}));
+
+// Mock le service Deezer pour ne pas appeler l'API réelle
+jest.mock('../services/deezer', () => ({
+  getAuthUrl: jest.fn(() => 'https://connect.deezer.com/oauth/auth.php?mock=true'),
+  getValidToken: jest.fn(),
+  searchTracks: jest.fn(),
   exchangeCode: jest.fn(),
 }));
 
@@ -42,6 +51,14 @@ describe('GET /api/auth/spotify', () => {
     const res = await request(app).get('/api/auth/spotify');
     expect(res.status).toBe(302);
     expect(res.headers.location).toContain('accounts.spotify.com');
+  });
+});
+
+describe('GET /api/auth/deezer', () => {
+  it('redirige vers Deezer OAuth', async () => {
+    const res = await request(app).get('/api/auth/deezer');
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toContain('connect.deezer.com');
   });
 });
 
@@ -83,6 +100,39 @@ describe('GET /api/music/search', () => {
 
     expect(res.status).toBe(401);
     expect(res.body.auth_url).toBe('/api/auth/spotify');
+  });
+
+  it('refuse une source invalide', async () => {
+    const res = await request(app)
+      .get('/api/music/search?q=test song&source=napster')
+      .set('Authorization', `Bearer ${testToken}`);
+    expect(res.status).toBe(400);
+  });
+
+  it('retourne des résultats Deezer quand source=deezer', async () => {
+    deezer.getValidToken.mockResolvedValue('mock-deezer-token');
+    deezer.searchTracks.mockResolvedValue([
+      { track_id: '999', track_name: 'Deezer Song', artist_name: 'Deezer Artist', source: 'deezer' },
+    ]);
+
+    const res = await request(app)
+      .get('/api/music/search?q=test song&source=deezer')
+      .set('Authorization', `Bearer ${testToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.tracks).toHaveLength(1);
+    expect(res.body.tracks[0].source).toBe('deezer');
+  });
+
+  it('retourne 401 si Deezer non connecté', async () => {
+    deezer.getValidToken.mockRejectedValue(new Error('Compte Deezer non connecté'));
+
+    const res = await request(app)
+      .get('/api/music/search?q=test song&source=deezer')
+      .set('Authorization', `Bearer ${testToken}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body.auth_url).toBe('/api/auth/deezer');
   });
 });
 
@@ -155,6 +205,17 @@ describe('GET /api/music/spotify/status', () => {
   it('indique que Spotify n\'est pas connecté', async () => {
     const res = await request(app)
       .get('/api/music/spotify/status')
+      .set('Authorization', `Bearer ${testToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.connected).toBe(false);
+  });
+});
+
+describe('GET /api/music/deezer/status', () => {
+  it('indique que Deezer n\'est pas connecté', async () => {
+    const res = await request(app)
+      .get('/api/music/deezer/status')
       .set('Authorization', `Bearer ${testToken}`);
 
     expect(res.status).toBe(200);
