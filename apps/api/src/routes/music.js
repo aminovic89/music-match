@@ -3,6 +3,7 @@ const Joi = require('joi');
 const db = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
 const spotify = require('../services/spotify');
+const deezer = require('../services/deezer');
 
 const router = express.Router();
 
@@ -16,25 +17,32 @@ const tracksSchema = Joi.array().items(
   })
 ).min(1).max(20);
 
-// GET /api/music/search?q=... — recherche live via Spotify API (option A)
+const SEARCH_PROVIDERS = { spotify, deezer };
+
+// GET /api/music/search?q=...&source=spotify|deezer — recherche live (option A)
 router.get('/search', requireAuth, async (req, res, next) => {
   try {
-    const { q, limit = 10 } = req.query;
+    const { q, limit = 10, source = 'spotify' } = req.query;
     if (!q || q.trim().length < 2) {
       return res.status(400).json({ error: 'Requête de recherche trop courte (min 2 caractères)' });
     }
 
+    const provider = SEARCH_PROVIDERS[source];
+    if (!provider) {
+      return res.status(400).json({ error: `Source invalide : ${source}` });
+    }
+
     let accessToken;
     try {
-      accessToken = await spotify.getValidToken(req.userId);
+      accessToken = await provider.getValidToken(req.userId);
     } catch (_err) {
       return res.status(401).json({
-        error: 'Compte Spotify non connecté',
-        auth_url: `/api/auth/spotify`,
+        error: `Compte ${source} non connecté`,
+        auth_url: `/api/auth/${source}`,
       });
     }
 
-    const tracks = await spotify.searchTracks(q.trim(), accessToken, parseInt(limit));
+    const tracks = await provider.searchTracks(q.trim(), accessToken, parseInt(limit));
     res.json({ tracks });
   } catch (err) {
     next(err);
@@ -181,6 +189,34 @@ router.get('/spotify/status', requireAuth, async (req, res, next) => {
 
     const { expires_at } = result.rows[0];
     const isExpired = new Date(expires_at) < new Date();
+
+    res.json({
+      connected: true,
+      expired: isExpired,
+      expires_at,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/music/deezer/status — vérifie si Deezer est connecté
+router.get('/deezer/status', requireAuth, async (req, res, next) => {
+  try {
+    const result = await db.query(
+      `SELECT expires_at FROM oauth_tokens
+       WHERE user_id = $1 AND provider = 'deezer'`,
+      [req.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ connected: false, auth_url: '/api/auth/deezer' });
+    }
+
+    const { expires_at } = result.rows[0];
+    // Pas de refresh dans le flow Deezer de base — expires_at est souvent
+    // NULL (token effectivement permanent), on ne le traite jamais comme expiré.
+    const isExpired = expires_at ? new Date(expires_at) < new Date() : false;
 
     res.json({
       connected: true,
