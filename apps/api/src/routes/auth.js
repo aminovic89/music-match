@@ -5,11 +5,15 @@ const crypto = require('crypto');
 const db = require('../database/db');
 const { signToken } = require('../utils/jwt');
 const spotify = require('../services/spotify');
+const { sendPasswordResetEmail } = require('../services/email');
 
 const router = express.Router();
 
 const MIN_AGE = 18;
 const INTENTS = ['romantic', 'friendship'];
+const PASSWORD_RESET_TOKEN_TTL_MINUTES = parseInt(
+  process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES || '60', 10
+);
 
 const registerSchema = Joi.object({
   email: Joi.string().email({ tlds: { allow: false } }).required(),
@@ -25,6 +29,15 @@ const registerSchema = Joi.object({
 const loginSchema = Joi.object({
   email: Joi.string().email({ tlds: { allow: false } }).required(),
   password: Joi.string().required(),
+});
+
+const forgotPasswordSchema = Joi.object({
+  email: Joi.string().email({ tlds: { allow: false } }).required(),
+});
+
+const resetPasswordSchema = Joi.object({
+  token: Joi.string().required(),
+  password: Joi.string().min(8).required(),
 });
 
 function toPublicUser(user) {
@@ -83,6 +96,69 @@ router.post('/login', async (req, res, next) => {
 
     const token = signToken({ sub: user.id });
     res.json({ token, user: toPublicUser(user) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { error, value } = forgotPasswordSchema.validate(req.body);
+    if (error) return res.status(400).json({ error: error.details[0].message });
+
+    const genericResponse = {
+      message: 'Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.',
+    };
+
+    const result = await db.query('SELECT id, email, first_name FROM users WHERE email = $1', [value.email]);
+    const user = result.rows[0];
+
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MINUTES * 60 * 1000);
+
+      await db.query(
+        `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+         VALUES ($1, $2, $3)`,
+        [user.id, tokenHash, expiresAt]
+      );
+
+      await sendPasswordResetEmail(user, rawToken);
+    }
+
+    res.json(genericResponse);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { error, value } = resetPasswordSchema.validate(req.body);
+    if (error) return res.status(400).json({ error: error.details[0].message });
+
+    const tokenHash = crypto.createHash('sha256').update(value.token).digest('hex');
+
+    const result = await db.query(
+      `SELECT id, user_id FROM password_reset_tokens
+       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()`,
+      [tokenHash]
+    );
+    const resetToken = result.rows[0];
+
+    if (!resetToken) {
+      return res.status(400).json({ error: 'Lien invalide ou expiré' });
+    }
+
+    const passwordHash = await bcrypt.hash(value.password, 10);
+
+    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, resetToken.user_id]);
+    await db.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1', [resetToken.id]);
+
+    res.json({ message: 'Mot de passe mis à jour.' });
   } catch (err) {
     next(err);
   }
