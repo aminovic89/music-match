@@ -62,12 +62,15 @@ async function getValidToken(userId) {
 }
 
 /**
- * Recherche des titres sur Deezer
+ * Recherche des titres sur Deezer. L'endpoint de recherche est public côté
+ * Deezer (pas besoin de compte connecté) — accessToken est optionnel et
+ * simplement omis des paramètres s'il n'est pas fourni.
  */
 async function searchTracks(query, accessToken, limit = 10) {
-  const response = await axios.get(`${DEEZER_API_URL}/search`, {
-    params: { q: query, access_token: accessToken, limit },
-  });
+  const params = { q: query, limit };
+  if (accessToken) params.access_token = accessToken;
+
+  const response = await axios.get(`${DEEZER_API_URL}/search`, { params });
 
   return (response.data.data || []).map((track) => ({
     track_id: String(track.id),
