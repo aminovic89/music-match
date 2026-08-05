@@ -7,12 +7,20 @@ import {
 const API = process.env.EXPO_PUBLIC_API_URL || 'https://music-match-api-dev.azurewebsites.net';
 const MAX_TRACKS = 20;
 
+function generateManualId() {
+  return `manual-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export default function ImportScreen({ token, onSubmit, onBack, loading, error }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [selected, setSelected] = useState([]);
   const [searching, setSearching] = useState(false);
   const [spotifyConnected, setSpotifyConnected] = useState(false);
+  const [manualName, setManualName] = useState('');
+  const [manualArtist, setManualArtist] = useState('');
+  const [manualSuggestions, setManualSuggestions] = useState([]);
+  const [manualSearching, setManualSearching] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -43,6 +51,35 @@ export default function ImportScreen({ token, onSubmit, onBack, loading, error }
     return () => clearTimeout(t);
   }, [query, search]);
 
+  // Suggestions Deezer (recherche publique, pas besoin de compte connecté)
+  // pour aider à la saisie manuelle.
+  const searchManualSuggestions = useCallback(async (q) => {
+    if (q.trim().length < 2) { setManualSuggestions([]); return; }
+    setManualSearching(true);
+    try {
+      const res = await fetch(
+        `${API}/api/music/search?q=${encodeURIComponent(q.trim())}&source=deezer`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (res.ok) setManualSuggestions(data.tracks || []);
+    } catch (_e) {}
+    finally { setManualSearching(false); }
+  }, [token]);
+
+  useEffect(() => {
+    const t = setTimeout(() => searchManualSuggestions(manualName), 400);
+    return () => clearTimeout(t);
+  }, [manualName, searchManualSuggestions]);
+
+  const addSuggestion = (track) => {
+    if (selected.length >= MAX_TRACKS) return;
+    setSelected((prev) => [...prev, { ...track, source: 'deezer' }]);
+    setManualName('');
+    setManualArtist('');
+    setManualSuggestions([]);
+  };
+
   const toggleTrack = (track) => {
     setSelected((prev) => {
       const exists = prev.find((t) => t.track_id === track.track_id);
@@ -54,11 +91,31 @@ export default function ImportScreen({ token, onSubmit, onBack, loading, error }
 
   const isSelected = (track) => selected.some((t) => t.track_id === track.track_id);
 
+  const addManualTrack = () => {
+    if (!manualName.trim() || selected.length >= MAX_TRACKS) return;
+    setSelected((prev) => [
+      ...prev,
+      {
+        track_id: generateManualId(),
+        track_name: manualName.trim(),
+        artist_name: manualArtist.trim(),
+        source: 'manual',
+      },
+    ]);
+    setManualName('');
+    setManualArtist('');
+    setManualSuggestions([]);
+  };
+
+  const removeTrack = (trackId) => {
+    setSelected((prev) => prev.filter((t) => t.track_id !== trackId));
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Ta musique</Text>
       <Text style={styles.subtitle}>
-        Sélectionne jusqu'à {MAX_TRACKS} titres qui te définissent
+        Sélectionne jusqu&apos;à {MAX_TRACKS} titres qui te définissent
       </Text>
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -91,26 +148,95 @@ export default function ImportScreen({ token, onSubmit, onBack, loading, error }
         {searching && <ActivityIndicator style={styles.searchSpinner} color="#7c3aed" size="small" />}
       </View>
 
-      {/* Compteur */}
-      <Text style={styles.counter}>{selected.length}/{MAX_TRACKS} sélectionnés</Text>
-
       {/* Résultats */}
+      {results.length > 0 && (
+        <FlatList
+          data={results}
+          keyExtractor={(item) => item.track_id}
+          style={styles.resultsList}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.trackItem, isSelected(item) && styles.trackSelected]}
+              onPress={() => toggleTrack(item)}
+            >
+              <Text style={styles.trackIcon}>🎵</Text>
+              <View style={styles.trackInfo}>
+                <Text style={styles.trackName} numberOfLines={1}>{item.track_name}</Text>
+                <Text style={styles.trackArtist} numberOfLines={1}>{item.artist_name}</Text>
+              </View>
+              {isSelected(item) && <Text style={styles.checkmark}>✓</Text>}
+            </TouchableOpacity>
+          )}
+        />
+      )}
+
+      {/* Saisie manuelle */}
+      <Text style={styles.manualLabel}>Ou ajoute un titre manuellement</Text>
+      <View style={styles.manualRow}>
+        <TextInput
+          style={[styles.searchInput, styles.manualInput]}
+          value={manualName}
+          onChangeText={setManualName}
+          placeholder="Titre"
+          placeholderTextColor="#6b7280"
+        />
+        <TextInput
+          style={[styles.searchInput, styles.manualInput]}
+          value={manualArtist}
+          onChangeText={setManualArtist}
+          placeholder="Artiste"
+          placeholderTextColor="#6b7280"
+        />
+        <TouchableOpacity
+          style={[styles.addBtn, (!manualName.trim() || selected.length >= MAX_TRACKS) && styles.submitDisabled]}
+          onPress={addManualTrack}
+          disabled={!manualName.trim() || selected.length >= MAX_TRACKS}
+        >
+          <Text style={styles.addBtnText}>+</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Suggestions Deezer en direct */}
+      {manualSearching && <Text style={styles.manualLabel}>Recherche...</Text>}
+      {!manualSearching && manualSuggestions.length > 0 && (
+        <View style={styles.suggestionsBox}>
+          {manualSuggestions.map((track) => (
+            <TouchableOpacity
+              key={track.track_id}
+              style={styles.suggestionItem}
+              onPress={() => addSuggestion(track)}
+            >
+              <Text style={styles.trackIcon}>🎵</Text>
+              <View style={styles.trackInfo}>
+                <Text style={styles.trackName} numberOfLines={1}>{track.track_name}</Text>
+                <Text style={styles.trackArtist} numberOfLines={1}>{track.artist_name}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* Titres sélectionnés */}
+      <View style={styles.selectedHeader}>
+        <Text style={styles.selectedLabel}>Titres sélectionnés</Text>
+        <Text style={styles.counter}>{selected.length}/{MAX_TRACKS}</Text>
+      </View>
       <FlatList
-        data={results}
+        data={selected}
         keyExtractor={(item) => item.track_id}
-        style={styles.list}
+        style={styles.selectedList}
+        ListEmptyComponent={<Text style={styles.emptyText}>Aucun titre pour l&apos;instant</Text>}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[styles.trackItem, isSelected(item) && styles.trackSelected]}
-            onPress={() => toggleTrack(item)}
-          >
-            <Text style={styles.trackIcon}>🎵</Text>
+          <View style={[styles.trackItem, styles.trackSelected]}>
+            <Text style={styles.trackIcon}>{item.source === 'manual' ? '✏️' : '🎵'}</Text>
             <View style={styles.trackInfo}>
               <Text style={styles.trackName} numberOfLines={1}>{item.track_name}</Text>
               <Text style={styles.trackArtist} numberOfLines={1}>{item.artist_name}</Text>
             </View>
-            {isSelected(item) && <Text style={styles.checkmark}>✓</Text>}
-          </TouchableOpacity>
+            <TouchableOpacity onPress={() => removeTrack(item.track_id)}>
+              <Text style={styles.removeText}>✕</Text>
+            </TouchableOpacity>
+          </View>
         )}
       />
 
@@ -157,8 +283,26 @@ const styles = StyleSheet.create({
     paddingVertical: 11, color: '#fff', fontSize: 14,
   },
   searchSpinner: { marginLeft: 8 },
-  counter: { color: '#9ca3af', fontSize: 12, textAlign: 'right', marginBottom: 8 },
-  list: { flex: 1, marginBottom: 16 },
+  resultsList: { maxHeight: 140, marginBottom: 8 },
+  manualLabel: { color: '#6b7280', fontSize: 11, marginBottom: 6 },
+  manualRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  manualInput: { flex: 1, marginBottom: 0 },
+  addBtn: {
+    paddingHorizontal: 16, borderRadius: 12, backgroundColor: '#27272a',
+    borderWidth: 1, borderColor: '#3f3f46', alignItems: 'center', justifyContent: 'center',
+  },
+  addBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  suggestionsBox: { marginBottom: 12, maxHeight: 140 },
+  suggestionItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    padding: 10, borderRadius: 10, borderWidth: 1,
+    borderColor: '#27272a', marginBottom: 6,
+  },
+  selectedHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  selectedLabel: { color: '#9ca3af', fontSize: 12 },
+  counter: { color: '#9ca3af', fontSize: 12 },
+  emptyText: { color: '#4b5563', fontSize: 12, fontStyle: 'italic' },
+  selectedList: { flex: 1, marginBottom: 16 },
   trackItem: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     padding: 12, borderRadius: 10, borderWidth: 1,
@@ -169,6 +313,7 @@ const styles = StyleSheet.create({
   trackInfo: { flex: 1 },
   trackName: { color: '#fff', fontSize: 13, fontWeight: '500' },
   trackArtist: { color: '#9ca3af', fontSize: 12 },
+  removeText: { color: '#6b7280', fontSize: 14, paddingHorizontal: 4 },
   actions: { flexDirection: 'row', gap: 12 },
   backBtn: {
     flex: 1, paddingVertical: 14, borderRadius: 16,

@@ -109,8 +109,7 @@ describe('GET /api/music/search', () => {
     expect(res.status).toBe(400);
   });
 
-  it('retourne des résultats Deezer quand source=deezer', async () => {
-    deezer.getValidToken.mockResolvedValue('mock-deezer-token');
+  it('retourne des résultats Deezer sans compte Deezer connecté (recherche publique)', async () => {
     deezer.searchTracks.mockResolvedValue([
       { track_id: '999', track_name: 'Deezer Song', artist_name: 'Deezer Artist', source: 'deezer' },
     ]);
@@ -122,17 +121,8 @@ describe('GET /api/music/search', () => {
     expect(res.status).toBe(200);
     expect(res.body.tracks).toHaveLength(1);
     expect(res.body.tracks[0].source).toBe('deezer');
-  });
-
-  it('retourne 401 si Deezer non connecté', async () => {
-    deezer.getValidToken.mockRejectedValue(new Error('Compte Deezer non connecté'));
-
-    const res = await request(app)
-      .get('/api/music/search?q=test song&source=deezer')
-      .set('Authorization', `Bearer ${testToken}`);
-
-    expect(res.status).toBe(401);
-    expect(res.body.auth_url).toBe('/api/auth/deezer');
+    expect(deezer.getValidToken).not.toHaveBeenCalled();
+    expect(deezer.searchTracks).toHaveBeenCalledWith('test song', null, 10);
   });
 });
 
@@ -168,6 +158,41 @@ describe('POST /api/music/tracks', () => {
     expect(res.status).toBe(200);
     expect(res.body.profile).toBeDefined();
     expect(res.body.profile.top_moods).toContain('energetic');
+  });
+
+  it('accepte les champs album_name/preview_url/image_url renvoyés par la recherche', async () => {
+    spotify.getValidToken.mockResolvedValue('mock-token');
+    spotify.getAudioFeatures.mockResolvedValue([
+      { id: 'track1', energy: 0.8, valence: 0.6, tempo: 120, danceability: 0.7 },
+    ]);
+    spotify.computeMusicProfile.mockReturnValue({
+      top_genres: ['pop'],
+      top_artists: ['Artist 1'],
+      avg_energy: 0.8,
+      avg_valence: 0.6,
+      avg_tempo: 120,
+      top_moods: ['energetic'],
+    });
+
+    const tracks = [
+      {
+        track_id: 'track1',
+        track_name: 'Song 1',
+        artist_name: 'Artist 1',
+        album_name: 'Album 1',
+        preview_url: 'https://example.com/preview.mp3',
+        image_url: 'https://example.com/cover.jpg',
+        source: 'spotify',
+      },
+    ];
+
+    const res = await request(app)
+      .post('/api/music/tracks')
+      .set('Authorization', `Bearer ${testToken}`)
+      .send(tracks);
+
+    expect(res.status).toBe(200);
+    expect(res.body.profile).toBeDefined();
   });
 
   it('refuse plus de 20 titres', async () => {

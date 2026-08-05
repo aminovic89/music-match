@@ -14,10 +14,18 @@ const tracksSchema = Joi.array().items(
     artist_name: Joi.string().allow('', null),
     genre: Joi.string().allow('', null),
     source: Joi.string().valid('spotify', 'deezer', 'soundcloud', 'manual').required(),
+    // Champs renvoyés par les résultats de recherche Spotify/Deezer
+    // (spotify.searchTracks / deezer.searchTracks) mais non utilisés côté DB.
+    album_name: Joi.string().allow('', null),
+    preview_url: Joi.string().allow('', null),
+    image_url: Joi.string().allow('', null),
   })
 ).min(1).max(20);
 
 const SEARCH_PROVIDERS = { spotify, deezer };
+// Deezer expose une recherche publique (pas besoin de compte connecté) —
+// contrairement à Spotify, qui exige un token utilisateur valide.
+const PUBLIC_SEARCH_SOURCES = new Set(['deezer']);
 
 // GET /api/music/search?q=...&source=spotify|deezer — recherche live (option A)
 router.get('/search', requireAuth, async (req, res, next) => {
@@ -32,14 +40,16 @@ router.get('/search', requireAuth, async (req, res, next) => {
       return res.status(400).json({ error: `Source invalide : ${source}` });
     }
 
-    let accessToken;
-    try {
-      accessToken = await provider.getValidToken(req.userId);
-    } catch (_err) {
-      return res.status(401).json({
-        error: `Compte ${source} non connecté`,
-        auth_url: `/api/auth/${source}`,
-      });
+    let accessToken = null;
+    if (!PUBLIC_SEARCH_SOURCES.has(source)) {
+      try {
+        accessToken = await provider.getValidToken(req.userId);
+      } catch (_err) {
+        return res.status(401).json({
+          error: `Compte ${source} non connecté`,
+          auth_url: `/api/auth/${source}`,
+        });
+      }
     }
 
     const tracks = await provider.searchTracks(q.trim(), accessToken, parseInt(limit));
