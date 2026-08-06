@@ -12,7 +12,8 @@ function SpotifyCallback() {
     if (token) {
       localStorage.setItem('mm_token', token);
     }
-    router.replace('/onboarding');
+    const next = params.get('next');
+    router.replace(next === 'import' ? '/onboarding?step=import' : '/onboarding');
   }, [params, router]);
 
   return null;

@@ -130,6 +130,27 @@ async function searchTracks(query, accessToken, limit = 10) {
 }
 
 /**
+ * Récupère les titres les plus écoutés de l'utilisateur (pour l'import automatique
+ * à la connexion, plutôt que de lui demander de chercher lui-même).
+ */
+async function getTopTracks(accessToken, limit = 20) {
+  const response = await axios.get(`${SPOTIFY_API_URL}/me/top/tracks`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    params: { limit, time_range: 'medium_term' },
+  });
+
+  return response.data.items.map((track) => ({
+    track_id: track.id,
+    track_name: track.name,
+    artist_name: track.artists[0]?.name || '',
+    album_name: track.album?.name || '',
+    preview_url: track.preview_url,
+    image_url: track.album?.images?.[0]?.url || null,
+    source: 'spotify',
+  }));
+}
+
+/**
  * Récupère les audio features d'une liste de track IDs
  */
 async function getAudioFeatures(trackIds, accessToken) {
@@ -204,6 +225,7 @@ module.exports = {
   exchangeCode,
   getValidToken,
   searchTracks,
+  getTopTracks,
   getAudioFeatures,
   computeMusicProfile,
   deriveMoods,

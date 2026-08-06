@@ -10,6 +10,7 @@ jest.mock('../services/spotify', () => ({
   getAuthUrl: jest.fn(() => 'https://accounts.spotify.com/authorize?mock=true'),
   getValidToken: jest.fn(),
   searchTracks: jest.fn(),
+  getTopTracks: jest.fn(),
   getAudioFeatures: jest.fn(),
   computeMusicProfile: jest.fn(),
   deriveMoods: jest.fn(),
@@ -51,6 +52,12 @@ describe('GET /api/auth/spotify', () => {
     const res = await request(app).get('/api/auth/spotify');
     expect(res.status).toBe(302);
     expect(res.headers.location).toContain('accounts.spotify.com');
+  });
+
+  it('encode la plateforme mobile dans le state pour le callback', async () => {
+    const res = await request(app).get('/api/auth/spotify?platform=mobile');
+    expect(res.status).toBe(302);
+    expect(spotify.getAuthUrl).toHaveBeenCalledWith(expect.stringMatching(/^mobile:/));
   });
 });
 
@@ -123,6 +130,40 @@ describe('GET /api/music/search', () => {
     expect(res.body.tracks[0].source).toBe('deezer');
     expect(deezer.getValidToken).not.toHaveBeenCalled();
     expect(deezer.searchTracks).toHaveBeenCalledWith('test song', null, 10);
+  });
+});
+
+describe('GET /api/music/spotify/top-tracks', () => {
+  it('refuse sans token', async () => {
+    const res = await request(app).get('/api/music/spotify/top-tracks');
+    expect(res.status).toBe(401);
+  });
+
+  it('retourne 401 avec auth_url si Spotify non connecté', async () => {
+    spotify.getValidToken.mockRejectedValue(new Error('Compte Spotify non connecté'));
+
+    const res = await request(app)
+      .get('/api/music/spotify/top-tracks')
+      .set('Authorization', `Bearer ${testToken}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body.auth_url).toBe('/api/auth/spotify');
+  });
+
+  it('retourne les titres les plus écoutés quand Spotify répond', async () => {
+    spotify.getValidToken.mockResolvedValue('mock-token');
+    spotify.getTopTracks.mockResolvedValue([
+      { track_id: 'top1', track_name: 'Top Song', artist_name: 'Top Artist', source: 'spotify' },
+    ]);
+
+    const res = await request(app)
+      .get('/api/music/spotify/top-tracks')
+      .set('Authorization', `Bearer ${testToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.tracks).toHaveLength(1);
+    expect(res.body.tracks[0].track_name).toBe('Top Song');
+    expect(spotify.getTopTracks).toHaveBeenCalledWith('mock-token', 20);
   });
 });
 

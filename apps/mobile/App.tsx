@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Linking } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { apiClient } from '@music-match/shared';
 import LoginScreen from './src/screens/auth/LoginScreen';
@@ -9,8 +9,12 @@ import HomeScreen from './src/screens/HomeScreen';
 import OnboardingNavigator from './src/screens/onboarding/OnboardingNavigator';
 
 const TOKEN_KEY = 'mm_token';
+// Capté au retour du flow OAuth Spotify (voir apps/api/src/routes/auth.js,
+// redirection mobile) pour ramener directement l'utilisateur à l'étape Import.
+const ONBOARDING_IMPORT_URL_RE = /^musicmatch:\/\/onboarding-import\?token=(.+)$/;
 
 type Screen = 'loading' | 'login' | 'register' | 'onboarding' | 'home';
+type OnboardingInitialStep = 'import' | undefined;
 
 // SecureStore n'a pas d'implémentation sur web (et pourrait échouer sur un
 // vrai device pour d'autres raisons) — on ne bloque jamais la navigation
@@ -30,6 +34,7 @@ async function persistToken(value: string | null) {
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [token, setToken] = useState<string | null>(null);
+  const [onboardingInitialStep, setOnboardingInitialStep] = useState<OnboardingInitialStep>(undefined);
 
   useEffect(() => {
     SecureStore.getItemAsync(TOKEN_KEY)
@@ -43,6 +48,24 @@ export default function App() {
         }
       })
       .catch(() => setScreen('login'));
+  }, []);
+
+  useEffect(() => {
+    const handleUrl = (url: string) => {
+      const match = url.match(ONBOARDING_IMPORT_URL_RE);
+      if (!match) return;
+      const newToken = decodeURIComponent(match[1]);
+      apiClient.setToken(newToken);
+      setToken(newToken);
+      setOnboardingInitialStep('import');
+      setScreen('onboarding');
+      persistToken(newToken);
+    };
+
+    const subscription = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+    Linking.getInitialURL().then((url) => { if (url) handleUrl(url); });
+
+    return () => subscription.remove();
   }, []);
 
   const handleLoginSuccess = (newToken: string) => {
@@ -89,7 +112,11 @@ export default function App() {
         />
       )}
       {screen === 'onboarding' && (
-        <OnboardingNavigator token={token} onComplete={() => setScreen('home')} />
+        <OnboardingNavigator
+          token={token}
+          initialStep={onboardingInitialStep}
+          onComplete={() => setScreen('home')}
+        />
       )}
       {screen === 'home' && <HomeScreen onLogout={handleLogout} />}
       <StatusBar style="light" />

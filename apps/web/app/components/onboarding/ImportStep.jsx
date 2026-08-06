@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://music-match-api-dev.azurewebsites.net';
 const MAX_TRACKS = 20;
@@ -10,15 +10,32 @@ function generateManualId() {
 }
 
 export default function ImportStep({ token, onSubmit, onBack, loading }) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
   const [selected, setSelected] = useState([]);
-  const [searching, setSearching] = useState(false);
   const [spotifyConnected, setSpotifyConnected] = useState(false);
+  const [importingSpotify, setImportingSpotify] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualArtist, setManualArtist] = useState('');
   const [manualSuggestions, setManualSuggestions] = useState([]);
   const [manualSearching, setManualSearching] = useState(false);
+  const hasImportedSpotify = useRef(false);
+
+  const importSpotifyTopTracks = useCallback(async () => {
+    setImportingSpotify(true);
+    try {
+      const res = await fetch(`${API}/api/music/spotify/top-tracks`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSelected((prev) => {
+          const existingIds = new Set(prev.map((t) => t.track_id));
+          const toAdd = (data.tracks || []).filter((t) => !existingIds.has(t.track_id));
+          return [...prev, ...toAdd].slice(0, MAX_TRACKS);
+        });
+      }
+    } catch (_e) {}
+    finally { setImportingSpotify(false); }
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -26,27 +43,15 @@ export default function ImportStep({ token, onSubmit, onBack, loading }) {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
-      .then((data) => setSpotifyConnected(data.connected))
+      .then((data) => {
+        setSpotifyConnected(data.connected);
+        if (data.connected && !hasImportedSpotify.current) {
+          hasImportedSpotify.current = true;
+          importSpotifyTopTracks();
+        }
+      })
       .catch(() => {});
-  }, [token]);
-
-  const search = useCallback(async (q) => {
-    if (q.length < 2) { setResults([]); return; }
-    setSearching(true);
-    try {
-      const res = await fetch(`${API}/api/music/search?q=${encodeURIComponent(q)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok) setResults(data.tracks || []);
-    } catch (_e) {}
-    finally { setSearching(false); }
-  }, [token]);
-
-  useEffect(() => {
-    const t = setTimeout(() => search(query), 400);
-    return () => clearTimeout(t);
-  }, [query, search]);
+  }, [token, importSpotifyTopTracks]);
 
   // Suggestions Deezer (recherche publique, pas besoin de compte connecté)
   // pour aider à la saisie manuelle.
@@ -76,17 +81,6 @@ export default function ImportStep({ token, onSubmit, onBack, loading }) {
     setManualArtist('');
     setManualSuggestions([]);
   };
-
-  const toggleTrack = (track) => {
-    setSelected((prev) => {
-      const exists = prev.find((t) => t.track_id === track.track_id);
-      if (exists) return prev.filter((t) => t.track_id !== track.track_id);
-      if (prev.length >= MAX_TRACKS) return prev;
-      return [...prev, { ...track, source: 'spotify' }];
-    });
-  };
-
-  const isSelected = (track) => selected.some((t) => t.track_id === track.track_id);
 
   const addManualTrack = () => {
     if (!manualName.trim() || selected.length >= MAX_TRACKS) return;
@@ -130,49 +124,15 @@ export default function ImportStep({ token, onSubmit, onBack, loading }) {
         <div className="flex-1">
           <div className="text-white font-medium text-sm">Connecter Spotify</div>
           <div className="text-gray-400 text-xs">
-            {spotifyConnected ? '✓ Connecté' : 'Recommandé pour la recherche'}
+            {importingSpotify
+              ? 'Importation de tes titres...'
+              : spotifyConnected
+                ? '✓ Connecté'
+                : 'Importe automatiquement tes titres les plus écoutés'}
           </div>
         </div>
         {spotifyConnected && <span className="text-green-400 text-sm">✓</span>}
       </a>
-
-      {/* Barre de recherche */}
-      <div className="relative mb-4">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rechercher un titre ou artiste..."
-          className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
-        />
-        {searching && (
-          <div className="absolute right-3 top-3 text-gray-400 text-xs">...</div>
-        )}
-      </div>
-
-      {/* Résultats */}
-      {results.length > 0 && (
-        <div className="flex flex-col gap-2 mb-4 max-h-56 overflow-y-auto">
-          {results.map((track) => (
-            <button
-              key={track.track_id}
-              onClick={() => toggleTrack(track)}
-              className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
-                isSelected(track)
-                  ? 'border-violet-500 bg-violet-500/10'
-                  : 'border-gray-800 hover:border-gray-600'
-              }`}
-            >
-              <span className="text-lg">🎵</span>
-              <div className="flex-1 min-w-0">
-                <div className="text-white text-sm font-medium truncate">{track.track_name}</div>
-                <div className="text-gray-400 text-xs truncate">{track.artist_name}</div>
-              </div>
-              {isSelected(track) && <span className="text-violet-400 text-sm flex-shrink-0">✓</span>}
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* Saisie manuelle */}
       <div className="mb-4">
