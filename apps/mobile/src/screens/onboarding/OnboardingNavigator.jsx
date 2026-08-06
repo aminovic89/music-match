@@ -7,8 +7,8 @@ import DnaScreen from './DnaScreen';
 const API = process.env.EXPO_PUBLIC_API_URL || 'https://music-match-api-dev.azurewebsites.net';
 const STEPS = { INTENT: 0, IMPORT: 1, DNA: 2 };
 
-export default function OnboardingNavigator({ token, onComplete }) {
-  const [step, setStep] = useState(STEPS.INTENT);
+export default function OnboardingNavigator({ token, initialStep, onComplete }) {
+  const [step, setStep] = useState(initialStep === 'import' ? STEPS.IMPORT : STEPS.INTENT);
   const [intent, setIntent] = useState('romantic');
   const [musicProfile, setMusicProfile] = useState(null);
   const [loading, setLoading] = useState(false);

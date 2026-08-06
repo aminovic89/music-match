@@ -59,6 +59,20 @@ router.get('/search', requireAuth, async (req, res, next) => {
   }
 });
 
+// GET /api/music/spotify/top-tracks — import automatique post-connexion
+router.get('/spotify/top-tracks', requireAuth, async (req, res, next) => {
+  try {
+    const accessToken = await spotify.getValidToken(req.userId);
+    const tracks = await spotify.getTopTracks(accessToken, 20);
+    res.json({ tracks });
+  } catch (err) {
+    if (err.message === 'Compte Spotify non connecté') {
+      return res.status(401).json({ error: err.message, auth_url: '/api/auth/spotify' });
+    }
+    next(err);
+  }
+});
+
 // POST /api/music/tracks — enregistre les 20 titres sélectionnés
 router.post('/tracks', requireAuth, async (req, res, next) => {
   try {

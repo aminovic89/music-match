@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import IntentStep from '@/components/onboarding/IntentStep';
 import ImportStep from '@/components/onboarding/ImportStep';
 import DnaStep from '@/components/onboarding/DnaStep';
 
 const STEPS = { INTENT: 0, IMPORT: 1, DNA: 2 };
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
-  const [step, setStep] = useState(STEPS.INTENT);
+  const searchParams = useSearchParams();
+  const [step, setStep] = useState(
+    searchParams.get('step') === 'import' ? STEPS.IMPORT : STEPS.INTENT
+  );
   const [intent, setIntent] = useState('romantic');
   const [musicProfile, setMusicProfile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -113,5 +116,13 @@ export default function OnboardingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={null}>
+      <OnboardingContent />
+    </Suspense>
   );
 }

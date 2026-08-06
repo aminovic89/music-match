@@ -167,16 +167,19 @@ router.post('/reset-password', async (req, res, next) => {
 
 // GET /api/auth/spotify — démarre le flow OAuth
 router.get('/spotify', (req, res) => {
-  const state = crypto.randomBytes(16).toString('hex');
+  // Le state encode aussi la plateforme d'origine (web/mobile), pour savoir au
+  // callback s'il faut rediriger vers le site (URL http) ou l'app (deep-link).
+  const platform = req.query.platform === 'mobile' ? 'mobile' : 'web';
+  const nonce = crypto.randomBytes(16).toString('hex');
   // En prod on stockerait le state en session/Redis pour valider au callback
-  const authUrl = spotify.getAuthUrl(state);
+  const authUrl = spotify.getAuthUrl(`${platform}:${nonce}`);
   res.redirect(authUrl);
 });
 
 // GET /api/auth/spotify/callback — reçoit le code et échange contre un token
 router.get('/spotify/callback', async (req, res, next) => {
   try {
-    const { code, error, state } = req.query; // eslint-disable-line no-unused-vars
+    const { code, error, state } = req.query;
 
     if (error) {
       return res.status(400).json({ error: `Spotify OAuth error: ${error}` });
@@ -228,9 +231,17 @@ router.get('/spotify/callback', async (req, res, next) => {
     // Génère un token JWT Music Match
     const jwtToken = signToken({ sub: user.id });
 
-    // Redirige vers le frontend avec le token
+    // Redirige vers le site (web) ou l'app (mobile, via deep-link) selon la
+    // plateforme encodée dans le state par GET /api/auth/spotify.
+    const platform = typeof state === 'string' && state.startsWith('mobile:') ? 'mobile' : 'web';
+
+    if (platform === 'mobile') {
+      const scheme = process.env.MOBILE_APP_SCHEME || 'musicmatch';
+      return res.redirect(`${scheme}://onboarding-import?token=${jwtToken}`);
+    }
+
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    res.redirect(`${frontendUrl}/auth/callback?token=${jwtToken}`);
+    res.redirect(`${frontendUrl}/auth/callback?token=${jwtToken}&next=import`);
   } catch (err) {
     next(err);
   }
