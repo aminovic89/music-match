@@ -19,7 +19,7 @@ on:
 env:
   AZURE_WEBAPP_NAME_DEV: music-match-api-dev
   AZURE_RESOURCE_GROUP_DEV: music-match-dev-rg
-  AZURE_DB_NAME_DEV: music-match-db-dev
+  AZURE_DB_NAME_DEV: music-match-db-dev-v2
   AZURE_WEBAPP_NAME_PROD: music-match-api-prod
   AZURE_RESOURCE_GROUP_PROD: music-match-prod-rg
   AZURE_DB_NAME_PROD: music-match-db-prod
