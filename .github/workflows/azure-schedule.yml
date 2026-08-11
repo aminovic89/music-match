@@ -1,0 +1,86 @@
+name: Azure Schedule — Start/Stop DEV & PROD
+
+on:
+  schedule:
+    # Horaires UTC pour viser 08:00/20:00 Europe/Paris en heure d'hiver.
+    # Les cron GitHub Actions sont toujours en UTC et ne s'ajustent pas à
+    # l'heure d'été — décalage d'~1h à prévoir en été (démarrage/arrêt réels
+    # vers 9h/21h). Ajuster ces deux lignes si besoin.
+    - cron: '0 7 * * 1-5'   # démarrage ~08:00 Paris, lun-ven
+    - cron: '0 19 * * 1-5'  # arrêt ~20:00 Paris, lun-ven
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action à déclencher manuellement'
+        required: true
+        type: choice
+        options: [start, stop]
+
+env:
+  AZURE_WEBAPP_NAME_DEV: music-match-api-dev
+  AZURE_RESOURCE_GROUP_DEV: music-match-dev-rg
+  AZURE_DB_NAME_DEV: music-match-db-dev
+  AZURE_WEBAPP_NAME_PROD: music-match-api-prod
+  AZURE_RESOURCE_GROUP_PROD: music-match-prod-rg
+  AZURE_DB_NAME_PROD: music-match-db-prod
+
+jobs:
+  start-dev:
+    name: Start DEV
+    if: (github.event.schedule == '0 7 * * 1-5') || (inputs.action == 'start')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Azure (DEV)
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+
+      - name: Start App Service + Postgres DEV
+        run: |
+          az webapp start --name ${{ env.AZURE_WEBAPP_NAME_DEV }} --resource-group ${{ env.AZURE_RESOURCE_GROUP_DEV }}
+          az postgres flexible-server start --name ${{ env.AZURE_DB_NAME_DEV }} --resource-group ${{ env.AZURE_RESOURCE_GROUP_DEV }}
+
+  start-prod:
+    name: Start PROD
+    if: (github.event.schedule == '0 7 * * 1-5') || (inputs.action == 'start')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Azure (PROD)
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+      - name: Start App Service + Postgres PROD
+        run: |
+          az webapp start --name ${{ env.AZURE_WEBAPP_NAME_PROD }} --resource-group ${{ env.AZURE_RESOURCE_GROUP_PROD }}
+          az postgres flexible-server start --name ${{ env.AZURE_DB_NAME_PROD }} --resource-group ${{ env.AZURE_RESOURCE_GROUP_PROD }}
+
+  stop-dev:
+    name: Stop DEV
+    if: (github.event.schedule == '0 19 * * 1-5') || (inputs.action == 'stop')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Azure (DEV)
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+
+      - name: Stop App Service + Postgres DEV
+        run: |
+          az webapp stop --name ${{ env.AZURE_WEBAPP_NAME_DEV }} --resource-group ${{ env.AZURE_RESOURCE_GROUP_DEV }}
+          az postgres flexible-server stop --name ${{ env.AZURE_DB_NAME_DEV }} --resource-group ${{ env.AZURE_RESOURCE_GROUP_DEV }}
+
+  stop-prod:
+    name: Stop PROD
+    if: (github.event.schedule == '0 19 * * 1-5') || (inputs.action == 'stop')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Azure (PROD)
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+      - name: Stop App Service + Postgres PROD
+        run: |
+          az webapp stop --name ${{ env.AZURE_WEBAPP_NAME_PROD }} --resource-group ${{ env.AZURE_RESOURCE_GROUP_PROD }}
+          az postgres flexible-server stop --name ${{ env.AZURE_DB_NAME_PROD }} --resource-group ${{ env.AZURE_RESOURCE_GROUP_PROD }}
