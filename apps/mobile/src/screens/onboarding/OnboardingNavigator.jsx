@@ -4,7 +4,7 @@ import IntentScreen from './IntentScreen';
 import ImportScreen from './ImportScreen';
 import DnaScreen from './DnaScreen';
 
-const API = process.env.EXPO_PUBLIC_API_URL || 'https://music-match-api-dev.azurewebsites.net';
+const API = process.env.EXPO_PUBLIC_API_URL || 'https://music-match-api-prod.azurewebsites.net';
 const STEPS = { INTENT: 0, IMPORT: 1, DNA: 2 };
 
 export default function OnboardingNavigator({ token, initialStep, onComplete }) {

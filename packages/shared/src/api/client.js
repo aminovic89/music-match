@@ -3,7 +3,7 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
   || process.env.EXPO_PUBLIC_API_URL
-  || 'https://music-match-api-dev.azurewebsites.net';
+  || 'https://music-match-api-prod.azurewebsites.net';
 
 class ApiClient {
   constructor() {
