@@ -6,6 +6,7 @@ import { apiClient } from '@music-match/shared';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import OnboardingNavigator from './src/screens/onboarding/OnboardingNavigator';
 
 const TOKEN_KEY = 'mm_token';
@@ -13,7 +14,7 @@ const TOKEN_KEY = 'mm_token';
 // redirection mobile) pour ramener directement l'utilisateur à l'étape Import.
 const ONBOARDING_IMPORT_URL_RE = /^musicmatch:\/\/onboarding-import\?token=(.+)$/;
 
-type Screen = 'loading' | 'login' | 'register' | 'onboarding' | 'home';
+type Screen = 'loading' | 'login' | 'register' | 'onboarding' | 'home' | 'profile';
 type OnboardingInitialStep = 'import' | undefined;
 
 // SecureStore n'a pas d'implémentation sur web (et pourrait échouer sur un
@@ -118,7 +119,10 @@ export default function App() {
           onComplete={() => setScreen('home')}
         />
       )}
-      {screen === 'home' && <HomeScreen onLogout={handleLogout} />}
+      {screen === 'home' && (
+        <HomeScreen onLogout={handleLogout} onNavigateProfile={() => setScreen('profile')} />
+      )}
+      {screen === 'profile' && <ProfileScreen onBack={() => setScreen('home')} />}
       <StatusBar style="light" />
     </>
   );
