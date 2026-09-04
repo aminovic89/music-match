@@ -1,13 +1,18 @@
-name: Azure Schedule — Start/Stop PROD
+name: Azure Schedule — Stop/Start PROD
+
+# Stratégie "off par défaut" : PROD reste éteint sauf déclenchement manuel
+# (quand on travaille dessus ou pour tester). Plus de démarrage automatique
+# le matin — seul un arrêt de sécurité tourne chaque soir, au cas où un
+# démarrage manuel aurait été oublié.
+#
+# Pour démarrer : Actions > Azure Schedule — Stop/Start PROD > Run workflow
+# > action = start (ou `gh workflow run azure-schedule.yml -f action=start`).
 
 on:
   schedule:
-    # Horaires UTC pour viser 08:00/20:00 Europe/Paris en heure d'hiver.
-    # Les cron GitHub Actions sont toujours en UTC et ne s'ajustent pas à
-    # l'heure d'été — décalage d'~1h à prévoir en été (démarrage/arrêt réels
-    # vers 9h/21h). Ajuster ces deux lignes si besoin.
-    - cron: '0 7 * * 1-5'   # démarrage ~08:00 Paris, lun-ven
-    - cron: '0 19 * * 1-5'  # arrêt ~20:00 Paris, lun-ven
+    # Horaire UTC pour viser ~20:00 Europe/Paris en heure d'hiver (les cron
+    # GitHub Actions ne s'ajustent pas à l'heure d'été — décalage d'~1h en été).
+    - cron: '0 19 * * *'  # arrêt de sécurité ~20:00 Paris, tous les jours
   workflow_dispatch:
     inputs:
       action:
@@ -24,7 +29,7 @@ env:
 jobs:
   start-prod:
     name: Start PROD
-    if: (github.event.schedule == '0 7 * * 1-5') || (inputs.action == 'start')
+    if: inputs.action == 'start'
     runs-on: ubuntu-latest
     steps:
       - name: Login to Azure (PROD)
@@ -44,7 +49,7 @@ jobs:
 
   stop-prod:
     name: Stop PROD
-    if: (github.event.schedule == '0 19 * * 1-5') || (inputs.action == 'stop')
+    if: (github.event.schedule == '0 19 * * *') || (inputs.action == 'stop')
     runs-on: ubuntu-latest
     steps:
       - name: Login to Azure (PROD)
