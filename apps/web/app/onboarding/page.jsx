@@ -23,7 +23,7 @@ function OnboardingContent() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('mm_token') : null;
 
   const apiCall = useCallback(async (method, path, body = null) => {
-    const API = process.env.NEXT_PUBLIC_API_URL || 'https://music-match-api-dev.azurewebsites.net';
+    const API = process.env.NEXT_PUBLIC_API_URL || 'https://music-match-api-prod.azurewebsites.net';
     const res = await fetch(`${API}${path}`, {
       method,
       headers: {
