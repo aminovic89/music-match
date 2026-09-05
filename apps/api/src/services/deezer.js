@@ -61,6 +61,15 @@ async function getValidToken(userId) {
   return result.rows[0].access_token;
 }
 
+// Qualificatifs de variante qu'on ne veut pas proposer en priorité (Live,
+// remix, karaoké...) — matché seulement à l'intérieur de parenthèses, pour
+// ne pas rejeter un titre qui contiendrait légitimement l'un de ces mots.
+const VARIANT_RE = /\((?:[^)]*\b(live|acoustic|remix|cover|karaoke|instrumental|extended|radio edit|tabata|version|edit|mix|demo)\b[^)]*)\)/i;
+
+function isVariant(trackName) {
+  return VARIANT_RE.test(trackName);
+}
+
 /**
  * Recherche des titres sur Deezer. L'endpoint de recherche est public côté
  * Deezer (pas besoin de compte connecté) — accessToken est optionnel et
@@ -72,7 +81,7 @@ async function searchTracks(query, accessToken, limit = 10) {
 
   const response = await axios.get(`${DEEZER_API_URL}/search`, { params });
 
-  return (response.data.data || []).map((track) => ({
+  const tracks = (response.data.data || []).map((track) => ({
     track_id: String(track.id),
     track_name: track.title,
     artist_name: track.artist?.name || '',
@@ -81,6 +90,11 @@ async function searchTracks(query, accessToken, limit = 10) {
     image_url: track.album?.cover_medium || null,
     source: 'deezer',
   }));
+
+  const primaryOnly = tracks.filter((t) => !isVariant(t.track_name));
+  // Si le filtre élimine tout (seules des variantes existent pour cette
+  // recherche), mieux vaut les montrer que de renvoyer une liste vide.
+  return primaryOnly.length > 0 ? primaryOnly : tracks;
 }
 
 module.exports = {

@@ -40,7 +40,7 @@ export default function MatchesPage() {
     <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <h1 className="text-2xl font-semibold text-white text-center mb-6">
-          Mes matchs 💜
+          Mes matchs{!loading ? ` (${matches.length})` : ''} 💜
         </h1>
 
         {error && (
@@ -54,13 +54,13 @@ export default function MatchesPage() {
         ) : matches.length === 0 ? (
           <div className="text-center">
             <p className="text-gray-400 text-sm mb-6">
-              Pas encore de match — va découvrir des profils !
+              Pas encore de match — va chercher des matchs !
             </p>
             <Link
               href="/discover"
               className="inline-block py-3 px-6 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl transition-colors"
             >
-              Découvrir des profils
+              Trouver des matchs
             </Link>
           </div>
         ) : (

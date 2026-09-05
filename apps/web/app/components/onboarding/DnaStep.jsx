@@ -11,18 +11,41 @@ const MOODS_LABELS = {
   neutral: { label: 'Neutre', emoji: '🎵' },
 };
 
-function MetricBar({ label, value }) {
+// Mêmes seuils que deriveMoods (apps/api/src/services/spotify.js), pour que
+// la légende reste cohérente avec les moods affichés juste en dessous.
+function energyLabel(pct) {
+  if (pct < 40) return 'plutôt calme';
+  if (pct > 70) return 'plutôt intense';
+  return 'équilibrée';
+}
+
+function valenceLabel(pct) {
+  if (pct < 35) return 'plutôt mélancolique';
+  if (pct > 60) return 'plutôt joyeuse';
+  return 'équilibrée';
+}
+
+function tempoLabel(bpm) {
+  if (bpm < 90) return 'tempo lent';
+  if (bpm > 120) return 'tempo rapide';
+  return 'tempo modéré';
+}
+
+function MetricBar({ label, value, caption }) {
   const pct = Math.round((value || 0) * 100);
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-gray-400 text-xs w-20 flex-shrink-0">{label}</span>
-      <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
-        <div
-          className="h-2 bg-violet-500 rounded-full transition-all duration-700"
-          style={{ width: `${pct}%` }}
-        />
+    <div>
+      <div className="flex items-center gap-3">
+        <span className="text-gray-400 text-xs w-20 flex-shrink-0">{label}</span>
+        <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+          <div
+            className="h-2 bg-violet-500 rounded-full transition-all duration-700"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="text-gray-400 text-xs w-8 text-right">{pct}</span>
       </div>
-      <span className="text-gray-400 text-xs w-8 text-right">{pct}</span>
+      {caption && <p className="text-gray-500 text-xs ml-[92px] mt-1">{caption}</p>}
     </div>
   );
 }
@@ -48,19 +71,30 @@ export default function DnaStep({ profile, onComplete, onBack }) {
         Ton ADN musical 🎵
       </h1>
       <p className="text-gray-400 text-center text-sm mb-8">
-        Voilà ce qu'on a trouvé à partir de tes titres
+        Voilà ce qu&apos;on a trouvé à partir de tes titres
       </p>
 
       {/* Métriques */}
       <div className="bg-gray-900 rounded-xl p-5 mb-4 border border-gray-800">
         <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-4">Audio</h3>
         <div className="flex flex-col gap-3">
-          <MetricBar label="Énergie" value={profile.avg_energy} />
-          <MetricBar label="Positivité" value={profile.avg_valence} />
-          <div className="flex items-center gap-3">
-            <span className="text-gray-400 text-xs w-20 flex-shrink-0">BPM moy.</span>
-            <div className="flex-1" />
-            <span className="text-white font-medium text-sm">{avgTempo}</span>
+          <MetricBar
+            label="Énergie"
+            value={profile.avg_energy}
+            caption={energyLabel(Math.round((profile.avg_energy || 0) * 100))}
+          />
+          <MetricBar
+            label="Positivité"
+            value={profile.avg_valence}
+            caption={valenceLabel(Math.round((profile.avg_valence || 0) * 100))}
+          />
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="text-gray-400 text-xs w-20 flex-shrink-0">BPM moy.</span>
+              <div className="flex-1" />
+              <span className="text-white font-medium text-sm">{avgTempo}</span>
+            </div>
+            <p className="text-gray-500 text-xs ml-[92px] mt-1">{tempoLabel(avgTempo)}</p>
           </div>
         </div>
       </div>
