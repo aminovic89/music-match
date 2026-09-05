@@ -55,7 +55,7 @@ export default function HomePage() {
             href="/discover"
             className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl transition-colors"
           >
-            🔍 Découvrir des profils
+            🔍 Trouver des matchs
           </Link>
           <Link
             href="/matches"

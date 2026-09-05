@@ -14,15 +14,38 @@ const MOODS_LABELS = {
   neutral: { label: 'Neutre', emoji: '🎵' },
 };
 
-function MetricBar({ label, value }) {
+// Mêmes seuils que deriveMoods (apps/api/src/services/spotify.js), pour que
+// la légende reste cohérente avec les moods affichés juste en dessous.
+function energyLabel(pct) {
+  if (pct < 40) return 'plutôt calme';
+  if (pct > 70) return 'plutôt intense';
+  return 'équilibrée';
+}
+
+function valenceLabel(pct) {
+  if (pct < 35) return 'plutôt mélancolique';
+  if (pct > 60) return 'plutôt joyeuse';
+  return 'équilibrée';
+}
+
+function tempoLabel(bpm) {
+  if (bpm < 90) return 'tempo lent';
+  if (bpm > 120) return 'tempo rapide';
+  return 'tempo modéré';
+}
+
+function MetricBar({ label, value, caption }) {
   const pct = Math.round((value || 0) * 100);
   return (
-    <View style={styles.metricRow}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <View style={styles.barBg}>
-        <View style={[styles.barFill, { width: `${pct}%` }]} />
+    <View>
+      <View style={styles.metricRow}>
+        <Text style={styles.metricLabel}>{label}</Text>
+        <View style={styles.barBg}>
+          <View style={[styles.barFill, { width: `${pct}%` }]} />
+        </View>
+        <Text style={styles.metricValue}>{pct}</Text>
       </View>
-      <Text style={styles.metricValue}>{pct}</Text>
+      {caption && <Text style={styles.metricCaption}>{caption}</Text>}
     </View>
   );
 }
@@ -48,12 +71,23 @@ export default function DnaScreen({ profile, onComplete, onBack }) {
       {/* Métriques audio */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>AUDIO</Text>
-        <MetricBar label="Énergie" value={profile.avg_energy} />
-        <MetricBar label="Positivité" value={profile.avg_valence} />
-        <View style={styles.metricRow}>
-          <Text style={styles.metricLabel}>BPM moy.</Text>
-          <View style={styles.barBg} />
-          <Text style={styles.metricValueBold}>{Math.round(profile.avg_tempo || 0)}</Text>
+        <MetricBar
+          label="Énergie"
+          value={profile.avg_energy}
+          caption={energyLabel(Math.round((profile.avg_energy || 0) * 100))}
+        />
+        <MetricBar
+          label="Positivité"
+          value={profile.avg_valence}
+          caption={valenceLabel(Math.round((profile.avg_valence || 0) * 100))}
+        />
+        <View>
+          <View style={styles.metricRow}>
+            <Text style={styles.metricLabel}>BPM moy.</Text>
+            <View style={styles.barBg} />
+            <Text style={styles.metricValueBold}>{Math.round(profile.avg_tempo || 0)}</Text>
+          </View>
+          <Text style={styles.metricCaption}>{tempoLabel(Math.round(profile.avg_tempo || 0))}</Text>
         </View>
       </View>
 
@@ -117,6 +151,7 @@ const styles = StyleSheet.create({
   barFill: { height: 6, backgroundColor: '#7c3aed', borderRadius: 3 },
   metricValue: { color: '#9ca3af', fontSize: 12, width: 24, textAlign: 'right' },
   metricValueBold: { color: '#fff', fontSize: 14, fontWeight: '500', width: 24, textAlign: 'right' },
+  metricCaption: { color: '#6b7280', fontSize: 11, marginLeft: 80, marginTop: -4, marginBottom: 10 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tagPurple: {
     paddingHorizontal: 12, paddingVertical: 6,

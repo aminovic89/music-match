@@ -120,7 +120,7 @@ export default function ImportScreen({ token, selected, onSelectedChange, onSubm
     <View style={styles.container}>
       <Text style={styles.title}>Ta musique</Text>
       <Text style={styles.subtitle}>
-        Sélectionne au moins {MIN_TRACKS} titres qui te définissent
+        Choisis au moins {MIN_TRACKS} titres que tu aimes
       </Text>
 
       {error && <Text style={styles.error}>{error}</Text>}

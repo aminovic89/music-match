@@ -120,7 +120,7 @@ export default function ImportStep({ token, selected, onSelectedChange, onSubmit
         Ta musique
       </h1>
       <p className="text-gray-400 text-center text-sm mb-6">
-        Sélectionne au moins {MIN_TRACKS} titres qui te définissent
+        Choisis au moins {MIN_TRACKS} titres que tu aimes
       </p>
 
       {/* Connexion Spotify */}
