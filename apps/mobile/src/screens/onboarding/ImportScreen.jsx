@@ -5,14 +5,25 @@ import {
 } from 'react-native';
 
 const API = process.env.EXPO_PUBLIC_API_URL || 'https://music-match-api-prod.azurewebsites.net';
-const MAX_TRACKS = 20;
+const MIN_TRACKS = 10;
 
 function generateManualId() {
   return `manual-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export default function ImportScreen({ token, onSubmit, onBack, loading, error }) {
-  const [selected, setSelected] = useState([]);
+function normalize(s) {
+  return (s || '').trim().toLowerCase();
+}
+
+function isDuplicate(list, track) {
+  return list.some((t) =>
+    t.track_id === track.track_id ||
+    (normalize(t.track_name) === normalize(track.track_name) &&
+      normalize(t.artist_name) === normalize(track.artist_name))
+  );
+}
+
+export default function ImportScreen({ token, selected, onSelectedChange, onSubmit, onBack, loading, error }) {
   const [spotifyConnected, setSpotifyConnected] = useState(false);
   const [importingSpotify, setImportingSpotify] = useState(false);
   const [manualName, setManualName] = useState('');
@@ -29,15 +40,17 @@ export default function ImportScreen({ token, onSubmit, onBack, loading, error }
       });
       const data = await res.json();
       if (res.ok) {
-        setSelected((prev) => {
-          const existingIds = new Set(prev.map((t) => t.track_id));
-          const toAdd = (data.tracks || []).filter((t) => !existingIds.has(t.track_id));
-          return [...prev, ...toAdd].slice(0, MAX_TRACKS);
+        onSelectedChange((prev) => {
+          const merged = [...prev];
+          for (const track of data.tracks || []) {
+            if (!isDuplicate(merged, track)) merged.push(track);
+          }
+          return merged;
         });
       }
     } catch (_e) {}
     finally { setImportingSpotify(false); }
-  }, [token]);
+  }, [token, onSelectedChange]);
 
   useEffect(() => {
     if (!token) return;
@@ -56,7 +69,8 @@ export default function ImportScreen({ token, onSubmit, onBack, loading, error }
   }, [token, importSpotifyTopTracks]);
 
   // Suggestions Deezer (recherche publique, pas besoin de compte connecté)
-  // pour aider à la saisie manuelle.
+  // pour aider à la saisie manuelle. Recherche combinée titre + artiste,
+  // pour que taper uniquement un artiste renvoie aussi des résultats.
   const searchManualSuggestions = useCallback(async (q) => {
     if (q.trim().length < 2) { setManualSuggestions([]); return; }
     setManualSearching(true);
@@ -72,43 +86,41 @@ export default function ImportScreen({ token, onSubmit, onBack, loading, error }
   }, [token]);
 
   useEffect(() => {
-    const t = setTimeout(() => searchManualSuggestions(manualName), 400);
+    const q = [manualName, manualArtist].filter((s) => s.trim()).join(' ').trim();
+    const t = setTimeout(() => searchManualSuggestions(q), 400);
     return () => clearTimeout(t);
-  }, [manualName, searchManualSuggestions]);
+  }, [manualName, manualArtist, searchManualSuggestions]);
 
   const addSuggestion = (track) => {
-    if (selected.length >= MAX_TRACKS) return;
-    setSelected((prev) => [...prev, { ...track, source: 'deezer' }]);
+    onSelectedChange((prev) => (isDuplicate(prev, track) ? prev : [...prev, { ...track, source: 'deezer' }]));
     setManualName('');
     setManualArtist('');
     setManualSuggestions([]);
   };
 
   const addManualTrack = () => {
-    if (!manualName.trim() || selected.length >= MAX_TRACKS) return;
-    setSelected((prev) => [
-      ...prev,
-      {
-        track_id: generateManualId(),
-        track_name: manualName.trim(),
-        artist_name: manualArtist.trim(),
-        source: 'manual',
-      },
-    ]);
+    if (!manualName.trim()) return;
+    const track = {
+      track_id: generateManualId(),
+      track_name: manualName.trim(),
+      artist_name: manualArtist.trim(),
+      source: 'manual',
+    };
+    onSelectedChange((prev) => (isDuplicate(prev, track) ? prev : [...prev, track]));
     setManualName('');
     setManualArtist('');
     setManualSuggestions([]);
   };
 
   const removeTrack = (trackId) => {
-    setSelected((prev) => prev.filter((t) => t.track_id !== trackId));
+    onSelectedChange((prev) => prev.filter((t) => t.track_id !== trackId));
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Ta musique</Text>
       <Text style={styles.subtitle}>
-        Sélectionne jusqu&apos;à {MAX_TRACKS} titres qui te définissent
+        Sélectionne au moins {MIN_TRACKS} titres qui te définissent
       </Text>
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -150,9 +162,9 @@ export default function ImportScreen({ token, onSubmit, onBack, loading, error }
           placeholderTextColor="#6b7280"
         />
         <TouchableOpacity
-          style={[styles.addBtn, (!manualName.trim() || selected.length >= MAX_TRACKS) && styles.submitDisabled]}
+          style={[styles.addBtn, !manualName.trim() && styles.submitDisabled]}
           onPress={addManualTrack}
-          disabled={!manualName.trim() || selected.length >= MAX_TRACKS}
+          disabled={!manualName.trim()}
         >
           <Text style={styles.addBtnText}>+</Text>
         </TouchableOpacity>
@@ -181,7 +193,9 @@ export default function ImportScreen({ token, onSubmit, onBack, loading, error }
       {/* Titres sélectionnés */}
       <View style={styles.selectedHeader}>
         <Text style={styles.selectedLabel}>Titres sélectionnés</Text>
-        <Text style={styles.counter}>{selected.length}/{MAX_TRACKS}</Text>
+        <Text style={[styles.counter, selected.length >= MIN_TRACKS && styles.counterOk]}>
+          {selected.length}{selected.length < MIN_TRACKS ? ` (min. ${MIN_TRACKS})` : ''}
+        </Text>
       </View>
       <FlatList
         data={selected}
@@ -202,15 +216,21 @@ export default function ImportScreen({ token, onSubmit, onBack, loading, error }
         )}
       />
 
+      {selected.length < MIN_TRACKS && (
+        <Text style={styles.hintText}>
+          Encore {MIN_TRACKS - selected.length} titre{MIN_TRACKS - selected.length > 1 ? 's' : ''} pour continuer
+        </Text>
+      )}
+
       {/* Actions */}
       <View style={styles.actions}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack}>
           <Text style={styles.backText}>← Retour</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.submitBtn, (selected.length === 0 || loading) && styles.submitDisabled]}
+          style={[styles.submitBtn, (selected.length < MIN_TRACKS || loading) && styles.submitDisabled]}
           onPress={() => onSubmit(selected)}
-          disabled={selected.length === 0 || loading}
+          disabled={selected.length < MIN_TRACKS || loading}
         >
           {loading
             ? <ActivityIndicator color="#fff" />
@@ -260,8 +280,10 @@ const styles = StyleSheet.create({
   selectedHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   selectedLabel: { color: '#9ca3af', fontSize: 12 },
   counter: { color: '#9ca3af', fontSize: 12 },
+  counterOk: { color: '#4ade80' },
   emptyText: { color: '#4b5563', fontSize: 12, fontStyle: 'italic' },
-  selectedList: { flex: 1, marginBottom: 16 },
+  selectedList: { flex: 1, marginBottom: 8 },
+  hintText: { color: '#6b7280', fontSize: 12, textAlign: 'center', marginBottom: 12 },
   trackItem: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     padding: 12, borderRadius: 10, borderWidth: 1,

@@ -13,6 +13,7 @@ export default function OnboardingNavigator({ token, initialStep, onComplete }) 
   const [musicProfile, setMusicProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedTracks, setSelectedTracks] = useState([]);
 
   const apiCall = useCallback(async (method, path, body = null) => {
     const res = await fetch(`${API}${path}`, {
@@ -80,6 +81,8 @@ export default function OnboardingNavigator({ token, initialStep, onComplete }) 
       {step === STEPS.IMPORT && (
         <ImportScreen
           token={token}
+          selected={selectedTracks}
+          onSelectedChange={setSelectedTracks}
           onSubmit={handleTracksSubmit}
           onBack={() => { setStep(STEPS.INTENT); setError(null); }}
           loading={loading}

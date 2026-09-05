@@ -189,6 +189,9 @@ describe('POST /api/music/tracks', () => {
 
     const tracks = [
       { track_id: 'track1', track_name: 'Song 1', artist_name: 'Artist 1', source: 'spotify' },
+      ...Array.from({ length: 9 }, (_, i) => ({
+        track_id: `manual-${i}`, track_name: `Song ${i + 2}`, artist_name: 'Artist X', source: 'manual',
+      })),
     ];
 
     const res = await request(app)
@@ -225,6 +228,9 @@ describe('POST /api/music/tracks', () => {
         image_url: 'https://example.com/cover.jpg',
         source: 'spotify',
       },
+      ...Array.from({ length: 9 }, (_, i) => ({
+        track_id: `manual-${i}`, track_name: `Song ${i + 2}`, artist_name: 'Artist X', source: 'manual',
+      })),
     ];
 
     const res = await request(app)
@@ -236,10 +242,42 @@ describe('POST /api/music/tracks', () => {
     expect(res.body.profile).toBeDefined();
   });
 
-  it('refuse plus de 20 titres', async () => {
-    const tracks = Array(21).fill({
-      track_id: 'x', track_name: 'Song', artist_name: 'Artist', source: 'spotify',
+  it('refuse moins de 10 titres', async () => {
+    const tracks = Array.from({ length: 5 }, (_, i) => ({
+      track_id: `x${i}`, track_name: 'Song', artist_name: 'Artist', source: 'spotify',
+    }));
+
+    const res = await request(app)
+      .post('/api/music/tracks')
+      .set('Authorization', `Bearer ${testToken}`)
+      .send(tracks);
+
+    expect(res.status).toBe(400);
+  });
+
+  it('accepte plus de 20 titres (pas de maximum produit)', async () => {
+    spotify.getValidToken.mockResolvedValue('mock-token');
+    spotify.getAudioFeatures.mockResolvedValue([]);
+    spotify.computeMusicProfile.mockReturnValue({
+      top_genres: [], top_artists: [], avg_energy: 0, avg_valence: 0, avg_tempo: 0, top_moods: ['neutral'],
     });
+
+    const tracks = Array.from({ length: 25 }, (_, i) => ({
+      track_id: `y${i}`, track_name: `Song ${i}`, artist_name: 'Artist', source: 'manual',
+    }));
+
+    const res = await request(app)
+      .post('/api/music/tracks')
+      .set('Authorization', `Bearer ${testToken}`)
+      .send(tracks);
+
+    expect(res.status).toBe(200);
+  });
+
+  it('refuse plus de 100 titres (plafond défensif API)', async () => {
+    const tracks = Array.from({ length: 101 }, (_, i) => ({
+      track_id: `z${i}`, track_name: 'Song', artist_name: 'Artist', source: 'manual',
+    }));
 
     const res = await request(app)
       .post('/api/music/tracks')
