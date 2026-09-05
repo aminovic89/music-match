@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { apiClient } from '@music-match/shared';
 
-export default function HomeScreen({ onLogout, onNavigateProfile }) {
+export default function HomeScreen({ onLogout, onNavigateProfile, onNavigateMusic }) {
   const [user, setUser] = useState(null);
   const [error, setError] = useState(null);
 
@@ -24,6 +24,10 @@ export default function HomeScreen({ onLogout, onNavigateProfile }) {
 
       <TouchableOpacity onPress={onNavigateProfile} style={styles.profileBtn}>
         <Text style={styles.profileText}>⚙️ Mon profil</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={onNavigateMusic} style={styles.profileBtn}>
+        <Text style={styles.profileText}>🎵 Ma musique</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={onLogout} style={styles.logoutBtn}>

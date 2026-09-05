@@ -3,14 +3,25 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://music-match-api-prod.azurewebsites.net';
-const MAX_TRACKS = 20;
+const MIN_TRACKS = 10;
 
 function generateManualId() {
   return `manual-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export default function ImportStep({ token, onSubmit, onBack, loading }) {
-  const [selected, setSelected] = useState([]);
+function normalize(s) {
+  return (s || '').trim().toLowerCase();
+}
+
+function isDuplicate(list, track) {
+  return list.some((t) =>
+    t.track_id === track.track_id ||
+    (normalize(t.track_name) === normalize(track.track_name) &&
+      normalize(t.artist_name) === normalize(track.artist_name))
+  );
+}
+
+export default function ImportStep({ token, selected, onSelectedChange, onSubmit, onBack, loading }) {
   const [spotifyConnected, setSpotifyConnected] = useState(false);
   const [importingSpotify, setImportingSpotify] = useState(false);
   const [manualName, setManualName] = useState('');
@@ -27,15 +38,17 @@ export default function ImportStep({ token, onSubmit, onBack, loading }) {
       });
       const data = await res.json();
       if (res.ok) {
-        setSelected((prev) => {
-          const existingIds = new Set(prev.map((t) => t.track_id));
-          const toAdd = (data.tracks || []).filter((t) => !existingIds.has(t.track_id));
-          return [...prev, ...toAdd].slice(0, MAX_TRACKS);
+        onSelectedChange((prev) => {
+          const merged = [...prev];
+          for (const track of data.tracks || []) {
+            if (!isDuplicate(merged, track)) merged.push(track);
+          }
+          return merged;
         });
       }
     } catch (_e) {}
     finally { setImportingSpotify(false); }
-  }, [token]);
+  }, [token, onSelectedChange]);
 
   useEffect(() => {
     if (!token) return;
@@ -54,7 +67,8 @@ export default function ImportStep({ token, onSubmit, onBack, loading }) {
   }, [token, importSpotifyTopTracks]);
 
   // Suggestions Deezer (recherche publique, pas besoin de compte connecté)
-  // pour aider à la saisie manuelle.
+  // pour aider à la saisie manuelle. Recherche combinée titre + artiste,
+  // pour que taper uniquement un artiste renvoie aussi des résultats.
   const searchManualSuggestions = useCallback(async (q) => {
     if (q.trim().length < 2) { setManualSuggestions([]); return; }
     setManualSearching(true);
@@ -70,36 +84,34 @@ export default function ImportStep({ token, onSubmit, onBack, loading }) {
   }, [token]);
 
   useEffect(() => {
-    const t = setTimeout(() => searchManualSuggestions(manualName), 400);
+    const q = [manualName, manualArtist].filter((s) => s.trim()).join(' ').trim();
+    const t = setTimeout(() => searchManualSuggestions(q), 400);
     return () => clearTimeout(t);
-  }, [manualName, searchManualSuggestions]);
+  }, [manualName, manualArtist, searchManualSuggestions]);
 
   const addSuggestion = (track) => {
-    if (selected.length >= MAX_TRACKS) return;
-    setSelected((prev) => [...prev, { ...track, source: 'deezer' }]);
+    onSelectedChange((prev) => (isDuplicate(prev, track) ? prev : [...prev, { ...track, source: 'deezer' }]));
     setManualName('');
     setManualArtist('');
     setManualSuggestions([]);
   };
 
   const addManualTrack = () => {
-    if (!manualName.trim() || selected.length >= MAX_TRACKS) return;
-    setSelected((prev) => [
-      ...prev,
-      {
-        track_id: generateManualId(),
-        track_name: manualName.trim(),
-        artist_name: manualArtist.trim(),
-        source: 'manual',
-      },
-    ]);
+    if (!manualName.trim()) return;
+    const track = {
+      track_id: generateManualId(),
+      track_name: manualName.trim(),
+      artist_name: manualArtist.trim(),
+      source: 'manual',
+    };
+    onSelectedChange((prev) => (isDuplicate(prev, track) ? prev : [...prev, track]));
     setManualName('');
     setManualArtist('');
     setManualSuggestions([]);
   };
 
   const removeTrack = (trackId) => {
-    setSelected((prev) => prev.filter((t) => t.track_id !== trackId));
+    onSelectedChange((prev) => prev.filter((t) => t.track_id !== trackId));
   };
 
   return (
@@ -108,7 +120,7 @@ export default function ImportStep({ token, onSubmit, onBack, loading }) {
         Ta musique
       </h1>
       <p className="text-gray-400 text-center text-sm mb-6">
-        Sélectionne jusqu&apos;à {MAX_TRACKS} titres qui te définissent
+        Sélectionne au moins {MIN_TRACKS} titres qui te définissent
       </p>
 
       {/* Connexion Spotify */}
@@ -154,7 +166,7 @@ export default function ImportStep({ token, onSubmit, onBack, loading }) {
           />
           <button
             onClick={addManualTrack}
-            disabled={!manualName.trim() || selected.length >= MAX_TRACKS}
+            disabled={!manualName.trim()}
             className="px-4 bg-gray-800 border border-gray-700 disabled:opacity-40 text-white rounded-xl text-sm hover:border-violet-500 transition-colors"
           >
             + Ajouter
@@ -187,8 +199,8 @@ export default function ImportStep({ token, onSubmit, onBack, loading }) {
       {/* Titres sélectionnés */}
       <div className="flex justify-between items-center mb-2">
         <span className="text-gray-400 text-xs">Titres sélectionnés</span>
-        <span className={`text-xs font-medium ${selected.length >= MAX_TRACKS ? 'text-violet-400' : 'text-gray-400'}`}>
-          {selected.length}/{MAX_TRACKS}
+        <span className={`text-xs font-medium ${selected.length >= MIN_TRACKS ? 'text-green-400' : 'text-gray-400'}`}>
+          {selected.length}{selected.length < MIN_TRACKS ? ` (min. ${MIN_TRACKS})` : ''}
         </span>
       </div>
       <div className="flex flex-col gap-2 mb-6 max-h-56 overflow-y-auto">
@@ -216,6 +228,12 @@ export default function ImportStep({ token, onSubmit, onBack, loading }) {
         ))}
       </div>
 
+      {selected.length < MIN_TRACKS && (
+        <p className="text-gray-500 text-xs text-center -mt-4 mb-4">
+          Encore {MIN_TRACKS - selected.length} titre{MIN_TRACKS - selected.length > 1 ? 's' : ''} pour continuer
+        </p>
+      )}
+
       <div className="flex gap-3">
         <button
           onClick={onBack}
@@ -225,7 +243,7 @@ export default function ImportStep({ token, onSubmit, onBack, loading }) {
         </button>
         <button
           onClick={() => onSubmit(selected)}
-          disabled={selected.length === 0 || loading}
+          disabled={selected.length < MIN_TRACKS || loading}
           className="flex-2 flex-grow-[2] py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-medium rounded-xl text-sm transition-colors"
         >
           {loading ? 'Analyse...' : `Analyser (${selected.length})`}

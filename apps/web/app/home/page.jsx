@@ -69,6 +69,12 @@ export default function HomePage() {
           >
             ⚙️ Mon profil
           </Link>
+          <Link
+            href="/music"
+            className="w-full py-3 border border-gray-700 text-gray-300 rounded-xl hover:border-gray-500 transition-colors"
+          >
+            🎵 Ma musique
+          </Link>
         </div>
 
         <button

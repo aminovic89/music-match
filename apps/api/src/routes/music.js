@@ -20,7 +20,10 @@ const tracksSchema = Joi.array().items(
     preview_url: Joi.string().allow('', null),
     image_url: Joi.string().allow('', null),
   })
-).min(1).max(20);
+  // Minimum produit : 10 titres pour un profil musical exploitable. Pas de
+  // maximum produit (l'utilisateur peut en ajouter autant qu'il veut) — 100
+  // reste un plafond purement défensif côté API contre un payload abusif.
+).min(10).max(100);
 
 const SEARCH_PROVIDERS = { spotify, deezer };
 // Deezer expose une recherche publique (pas besoin de compte connecté) —
@@ -73,7 +76,7 @@ router.get('/spotify/top-tracks', requireAuth, async (req, res, next) => {
   }
 });
 
-// POST /api/music/tracks — enregistre les 20 titres sélectionnés
+// POST /api/music/tracks — enregistre les titres sélectionnés
 router.post('/tracks', requireAuth, async (req, res, next) => {
   try {
     const { error, value: tracks } = tracksSchema.validate(req.body);
@@ -167,15 +170,17 @@ router.get('/profile', requireAuth, async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         error: 'Profil musical non créé',
-        hint: 'Connecte ton Spotify ou sélectionne 20 titres via POST /api/music/tracks',
+        hint: 'Connecte ton Spotify ou sélectionne au moins 10 titres via POST /api/music/tracks',
       });
     }
 
     const profile = result.rows[0];
 
-    // Récupérer aussi les tracks
+    // Récupérer aussi les tracks (track_id inclus pour permettre de pré-remplir
+    // un nouvel écran de sélection sans perdre le lien vers les vraies audio
+    // features des titres Spotify)
     const tracksResult = await db.query(
-      `SELECT track_name, artist_name, genre, energy, valence, tempo, source
+      `SELECT track_id, track_name, artist_name, genre, energy, valence, tempo, source
        FROM user_tracks WHERE user_id = $1 ORDER BY order_index`,
       [req.userId]
     );
