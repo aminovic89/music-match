@@ -127,6 +127,20 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
 
+      # PROD est arrêté par défaut (coût) — on la redémarre seulement si
+      # besoin pour ce déploiement, et on la rearrête à l'identique après,
+      # pour ne jamais casser le health check ni laisser tourner PROD.
+      - name: Vérifier l'état de l'App Service PROD avant déploiement
+        id: prod_state
+        run: |
+          state=$(az webapp show --name ${{ env.AZURE_WEBAPP_NAME_PROD }} --resource-group ${{ env.AZURE_RESOURCE_GROUP_PROD }} --query state -o tsv)
+          echo "was_running=$([ "$state" = "Running" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Démarrer l'App Service PROD si elle était arrêtée
+        if: steps.prod_state.outputs.was_running == 'false'
+        run: |
+          az webapp start --name ${{ env.AZURE_WEBAPP_NAME_PROD }} --resource-group ${{ env.AZURE_RESOURCE_GROUP_PROD }}
+
       - name: Set FRONTEND_URL app setting (CORS)
         run: |
           SWA_HOSTNAME=$(az staticwebapp show \
@@ -175,6 +189,11 @@ jobs:
               draft: false,
               prerelease: false
             })
+
+      - name: Rearrêter l'App Service PROD (état d'avant déploiement)
+        if: always() && steps.prod_state.outputs.was_running == 'false'
+        run: |
+          az webapp stop --name ${{ env.AZURE_WEBAPP_NAME_PROD }} --resource-group ${{ env.AZURE_RESOURCE_GROUP_PROD }}
 
   # ─── 4. DEPLOY WEB PROD → AZURE STATIC WEB APPS ─────────
   deploy-web-prod:
