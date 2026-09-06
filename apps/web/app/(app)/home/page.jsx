@@ -52,20 +52,8 @@ export default function HomePage() {
 
         <div className="flex flex-col gap-3 mb-8">
           <Link
-            href="/discover"
-            className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl transition-colors"
-          >
-            🔍 Trouver des matchs
-          </Link>
-          <Link
-            href="/matches"
-            className="w-full py-3 border border-gray-700 text-gray-300 rounded-xl hover:border-gray-500 transition-colors"
-          >
-            💜 Mes matchs
-          </Link>
-          <Link
             href="/profile"
-            className="w-full py-3 border border-gray-700 text-gray-300 rounded-xl hover:border-gray-500 transition-colors"
+            className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl transition-colors"
           >
             ⚙️ Mon profil
           </Link>
