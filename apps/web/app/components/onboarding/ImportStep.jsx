@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'https://music-match-api-prod.azurewebsites.net';
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const MIN_TRACKS = 10;
 
 function generateManualId() {

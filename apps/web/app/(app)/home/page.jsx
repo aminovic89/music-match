@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'https://music-match-api-prod.azurewebsites.net';
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function HomePage() {
   const router = useRouter();

@@ -4,7 +4,7 @@ import {
   StyleSheet, ActivityIndicator, Linking,
 } from 'react-native';
 
-const API = process.env.EXPO_PUBLIC_API_URL || 'https://music-match-api-prod.azurewebsites.net';
+const API = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 const MIN_TRACKS = 10;
 
 function generateManualId() {

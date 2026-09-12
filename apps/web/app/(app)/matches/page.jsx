@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'https://music-match-api-prod.azurewebsites.net';
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function MatchesPage() {
   const router = useRouter();

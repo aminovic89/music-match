@@ -4,7 +4,6 @@
 - macOS avec Docker Desktop installé
 - Node.js 20+ (`brew install node`)
 - VS Code (`brew install --cask visual-studio-code`)
-- Azure CLI (`brew install azure-cli`)
 - Expo CLI (`npm install -g expo-cli`)
 
 ---
@@ -92,7 +91,7 @@ music-match/
 │   └── types/        → Types TypeScript partagés
 ├── .github/
 │   └── workflows/
-│       └── ci-cd.yml → Pipeline GitHub Actions → Azure
+│       └── ci.yml → Lint, tests et migrations Neon (Vercel/Render déploient en direct via GitHub)
 ├── docker-compose.yml
 ├── .env.example
 └── music-match.code-workspace
@@ -100,67 +99,23 @@ music-match/
 
 ---
 
-## 5. Déploiement Azure (free tiers)
+## 5. Déploiement (100% gratuit)
 
 ### Services utilisés
-| Service                    | Plan      | Limite gratuite              |
-|----------------------------|-----------|------------------------------|
-| Azure App Service          | F1 Free   | 60 min CPU/jour, 1 GB RAM    |
-| Azure Database PostgreSQL  | Flexible  | Gratuit 12 mois              |
-| Azure Cache for Redis      | C0 Basic  | 250 MB                       |
-| Azure Static Web Apps      | Free      | 100 GB bandwidth/mois        |
-| Azure Blob Storage         | LRS       | 5 GB gratuit 12 mois         |
+| Service         | Rôle                          | Limite gratuite                                |
+|------------------|-------------------------------|-------------------------------------------------|
+| Vercel           | Web (Next.js)                 | Généreux free tier, déploiement auto sur push   |
+| Render           | API (Express + socket.io)     | Free web service, veille après 15 min d'inactivité (~50s de cold start au réveil) |
+| Neon             | PostgreSQL                    | Serverless, gratuit, pas d'expiration            |
+| Vercel Blob      | Stockage (photos de profil)   | 1 GB gratuit                                     |
 
-### Première fois (setup Azure)
+Vercel et Render sont connectés directement au repo GitHub et déploient automatiquement sur chaque push vers `main` (pas d'étape manuelle ni de workflow GitHub Actions dédié au déploiement). Le workflow [.github/workflows/ci.yml](.github/workflows/ci.yml) se charge du lint, des tests, et de l'application des migrations sur Neon.
 
-```bash
-# Connexion Azure
-az login
+### Setup (une fois)
 
-# Créer le resource group
-az group create --name music-match-rg --location francecentral
-
-# Créer App Service plan (free)
-az appservice plan create \
-  --name music-match-plan \
-  --resource-group music-match-rg \
-  --sku FREE --is-linux
-
-# Créer la Web App Node.js
-az webapp create \
-  --resource-group music-match-rg \
-  --plan music-match-plan \
-  --name music-match-api \
-  --runtime "NODE:20-lts"
-
-# Créer PostgreSQL Flexible Server
-az postgres flexible-server create \
-  --resource-group music-match-rg \
-  --name music-match-db \
-  --location francecentral \
-  --admin-user mmadmin \
-  --admin-password "ChangeMe123!" \
-  --sku-name Standard_B1ms \
-  --tier Burstable
-
-# Créer Static Web App (pour Next.js)
-az staticwebapp create \
-  --name music-match-web \
-  --resource-group music-match-rg \
-  --location "West Europe" \
-  --source https://github.com/ton-org/music-match \
-  --branch main \
-  --app-location apps/web \
-  --output-location .next \
-  --login-with-github
-```
-
-### Configurer les secrets GitHub
-
-Dans GitHub → Settings → Secrets, ajouter :
-- `AZURE_WEBAPP_PUBLISH_PROFILE` → télécharger depuis Azure Portal
-- `AZURE_STATIC_WEB_APPS_TOKEN` → depuis la Static Web App
-- `API_URL` → URL de l'App Service
+1. **Vercel** : importer le repo → Root Directory = `apps/web` → variable d'env `NEXT_PUBLIC_API_URL` = URL Render de l'API. Créer un Blob Store dans l'onglet Storage pour obtenir `BLOB_READ_WRITE_TOKEN`.
+2. **Render** : New Web Service → connecter le repo → Runtime Docker, Dockerfile Path = `apps/api/Dockerfile` → Health Check Path = `/health` → configurer les variables d'env (voir [.env.prod.example](.env.prod.example)).
+3. **Neon** : créer un projet Postgres → récupérer la connection string pour `DATABASE_URL` (Render) et le secret GitHub `DATABASE_URL` (migrations CI).
 
 ---
 

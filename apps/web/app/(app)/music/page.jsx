@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import ImportStep from '@/components/onboarding/ImportStep';
 import DnaStep from '@/components/onboarding/DnaStep';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'https://music-match-api-prod.azurewebsites.net';
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const STEPS = { IMPORT: 0, DNA: 1 };
 
 export default function MusicPage() {

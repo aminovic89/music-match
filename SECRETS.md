@@ -6,75 +6,38 @@
 
 ## Secrets obligatoires
 
-| Secret                            | Description                                      | Où trouver                          |
-|------------------------------------|--------------------------------------------------|--------------------------------------|
-| AZURE_CREDENTIALS_DEV             | JSON credentials Service Principal DEV          | Sortie du script setup-azure.sh     |
-| AZURE_CREDENTIALS_PROD            | JSON credentials Service Principal PROD         | Sortie du script setup-azure.sh     |
-| AZURE_STATIC_WEB_APPS_TOKEN_DEV   | Token déploiement Static Web Apps DEV           | Sortie du script setup-azure.sh     |
-| AZURE_STATIC_WEB_APPS_TOKEN_PROD  | Token déploiement Static Web Apps PROD          | Sortie du script setup-azure.sh     |
-
-## Pas de secret nécessaire pour les images Docker
-
-Les images sont poussées vers **GitHub Container Registry (ghcr.io)** —
-gratuit et déjà intégré à GitHub Actions via le token automatique
-`secrets.GITHUB_TOKEN` (aucune configuration manuelle).
-
-⚠️ **Étape manuelle obligatoire après le premier push** :
-Le package Docker doit être rendu **public** pour qu'Azure App Service
-puisse le télécharger sans credentials :
-
-1. Va sur `https://github.com/aminovic89/music-match/pkgs/container/music-match-api`
-2. Package settings → Change visibility → **Public**
-
-## Secrets optionnels
-
-| Secret          | Description                    |
-|------------------|---------------------------------|
-| SLACK_WEBHOOK   | URL webhook Slack (optionnel)  |
+| Secret          | Description                                              | Où trouver                          |
+|------------------|-----------------------------------------------------------|--------------------------------------|
+| DATABASE_URL    | Connection string Neon, utilisée par le job de migration  | Neon → Project → Connection Details |
 
 ## Environnements GitHub
 
-Créer deux environnements dans GitHub → Settings → Environments :
+Créer l'environnement `prod` dans GitHub → Settings → Environments (utilisé par le job `migrate-prod` de [ci.yml](.github/workflows/ci.yml)) :
+- Protection recommandée : ajouter un "Required reviewer" (toi ou un coéquipier) avant d'appliquer des migrations sur la base de prod.
 
-1. **dev**
-   - Pas de protection requise
-   - Déploiement automatique sur push develop
+## Déploiement — pas de secret GitHub
 
-2. **prod**
-   - Protection recommandée : ajouter un "Required reviewer" (toi ou un coéquipier)
-   - Déploiement automatique sur push main
+Vercel (web) et Render (api) déploient directement depuis leur propre intégration GitHub, indépendamment de GitHub Actions. Leurs variables d'environnement se configurent dans leurs dashboards respectifs, pas comme secrets GitHub :
 
-## Format AZURE_CREDENTIALS
+| Variable                  | Où                      | Description                                   |
+|----------------------------|-------------------------|------------------------------------------------|
+| NEXT_PUBLIC_API_URL        | Vercel (apps/web)       | URL de l'API sur Render                        |
+| DATABASE_URL               | Render (apps/api)       | Connection string Neon                         |
+| JWT_SECRET                 | Render (apps/api)       | Secret fort et aléatoire                       |
+| FRONTEND_URL               | Render (apps/api)       | URL Vercel (CORS + socket.io)                  |
+| BLOB_READ_WRITE_TOKEN      | Vercel + Render         | Token Vercel Blob (Storage → Blob → créer un store) |
+| SPOTIFY_/DEEZER_/SOUNDCLOUD_CLIENT_ID/SECRET | Render | Credentials OAuth des providers musicaux |
 
-Le script setup-azure.sh génère automatiquement ce JSON :
+Voir [.env.prod.example](.env.prod.example) pour le détail complet.
 
-```json
-{
-  "clientId": "...",
-  "clientSecret": "...",
-  "subscriptionId": "...",
-  "tenantId": "...",
-  "activeDirectoryEndpointUrl": "https://login.microsoftonline.com",
-  "resourceManagerEndpointUrl": "https://management.azure.com/",
-  "activeDirectoryGraphResourceId": "https://graph.windows.net/",
-  "sqlManagementEndpointUrl": "https://management.core.windows.net:8443/",
-  "galleryEndpointUrl": "https://gallery.azure.com/",
-  "managementEndpointUrl": "https://management.core.windows.net/"
-}
-```
+## Services utilisés (100% gratuit)
 
-Coller ce JSON entier dans le secret AZURE_CREDENTIALS_DEV ou AZURE_CREDENTIALS_PROD.
+| Service       | Rôle                        | Coût                                         |
+|----------------|------------------------------|-----------------------------------------------|
+| Vercel         | Web (Next.js)                | Gratuit                                       |
+| Render         | API (Express + socket.io)    | Gratuit (veille après 15 min d'inactivité)   |
+| Neon           | PostgreSQL                   | Gratuit, sans expiration                      |
+| Vercel Blob    | Stockage (photos de profil)  | Gratuit (1 GB)                                |
 
-## Services Azure utilisés (100% gratuit)
-
-| Service                          | Tier      | Coût                          |
-|------------------------------------|-----------|--------------------------------|
-| Azure App Service (API)          | F1 Free   | Gratuit (60 min CPU/jour)     |
-| Azure Database for PostgreSQL    | Burstable | Gratuit 12 mois               |
-| Azure Blob Storage               | LRS       | Gratuit 12 mois (5 GB)        |
-| Azure Static Web Apps (Web)      | Free      | Gratuit                        |
-| GitHub Container Registry        | —         | Gratuit                        |
-
-**Redis** n'est pas déployé sur Azure pour l'instant (pas de free tier).
-Le code ne l'utilise pas encore — à ajouter plus tard si besoin
-(ex: Upstash a un free tier généreux).
+**Redis** n'est pas déployé — le code ne l'utilise pas (à ajouter plus tard si besoin,
+ex: Upstash a un free tier généreux).
