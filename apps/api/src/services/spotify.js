@@ -166,10 +166,12 @@ async function getAudioFeatures(trackIds, accessToken) {
  * Calcule le profil musical à partir des tracks et audio features
  */
 function computeMusicProfile(tracks, audioFeatures) {
-  // Moyennes des audio features
+  // Moyennes des audio features — null (pas 0) quand aucune donnée n'est
+  // disponible (ex. titres Deezer/manuels, sans audio features Spotify),
+  // pour distinguer "pas de données" de "vraie moyenne à zéro".
   const avg = (key) => {
     const vals = audioFeatures.map((f) => f[key]).filter((v) => v != null);
-    return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
   };
 
   const avg_energy = avg('energy');
@@ -209,6 +211,10 @@ function computeMusicProfile(tracks, audioFeatures) {
  * Dérive les moods à partir des audio features
  */
 function deriveMoods(energy, valence, danceability) {
+  // Pas de vraies audio features (energy/valence null) → pas de moods à
+  // afficher, plutôt que de dériver des moods faux à partir de zéros.
+  if (energy == null || valence == null) return [];
+
   const moods = [];
   if (energy > 0.7) moods.push('energetic');
   if (energy < 0.4) moods.push('chill');
