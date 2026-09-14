@@ -345,4 +345,37 @@ describe('deriveMoods', () => {
     const moods = realSpotify.deriveMoods(0.3, 0.5, 0.4);
     expect(moods).toContain('chill');
   });
+
+  it('renvoie un tableau vide sans audio features (energy/valence null)', () => {
+    const realSpotify = jest.requireActual('../services/spotify');
+    expect(realSpotify.deriveMoods(null, null, null)).toEqual([]);
+  });
+});
+
+describe('computeMusicProfile', () => {
+  it('renvoie avg_energy/avg_valence/avg_tempo à null sans audio features (titres Deezer/manuels)', () => {
+    const realSpotify = jest.requireActual('../services/spotify');
+    const tracks = [
+      { track_name: 'Song A', artist_name: 'Artist A', source: 'deezer' },
+      { track_name: 'Song B', artist_name: 'Artist B', source: 'manual' },
+    ];
+    const profile = realSpotify.computeMusicProfile(tracks, []);
+
+    expect(profile.avg_energy).toBeNull();
+    expect(profile.avg_valence).toBeNull();
+    expect(profile.avg_tempo).toBeNull();
+    expect(profile.top_moods).toEqual([]);
+  });
+
+  it('calcule de vraies moyennes avec des audio features Spotify', () => {
+    const realSpotify = jest.requireActual('../services/spotify');
+    const tracks = [{ track_name: 'Song A', artist_name: 'Artist A', source: 'spotify' }];
+    const audioFeatures = [{ energy: 0.8, valence: 0.6, tempo: 120, danceability: 0.7 }];
+    const profile = realSpotify.computeMusicProfile(tracks, audioFeatures);
+
+    expect(profile.avg_energy).toBe(0.8);
+    expect(profile.avg_valence).toBe(0.6);
+    expect(profile.avg_tempo).toBe(120);
+    expect(profile.top_moods.length).toBeGreaterThan(0);
+  });
 });

@@ -63,8 +63,6 @@ export default function DnaStep({ profile, onComplete, onBack }) {
     );
   }
 
-  const avgTempo = Math.round(profile.avg_tempo || 0);
-
   return (
     <div className="flex flex-col">
       <h1 className="text-2xl font-semibold text-white text-center mb-2">
@@ -74,30 +72,33 @@ export default function DnaStep({ profile, onComplete, onBack }) {
         Voilà ce qu&apos;on a trouvé à partir de tes titres
       </p>
 
-      {/* Métriques */}
-      <div className="bg-gray-900 rounded-xl p-5 mb-4 border border-gray-800">
-        <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-4">Audio</h3>
-        <div className="flex flex-col gap-3">
-          <MetricBar
-            label="Énergie"
-            value={profile.avg_energy}
-            caption={energyLabel(Math.round((profile.avg_energy || 0) * 100))}
-          />
-          <MetricBar
-            label="Positivité"
-            value={profile.avg_valence}
-            caption={valenceLabel(Math.round((profile.avg_valence || 0) * 100))}
-          />
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="text-gray-400 text-xs w-20 flex-shrink-0">BPM moy.</span>
-              <div className="flex-1" />
-              <span className="text-white font-medium text-sm">{avgTempo}</span>
+      {/* Métriques — seulement si on a de vraies audio features (titres
+          importés via Spotify) ; les titres Deezer/manuels n'en ont pas. */}
+      {profile.avg_energy != null && (
+        <div className="bg-gray-900 rounded-xl p-5 mb-4 border border-gray-800">
+          <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-4">Audio</h3>
+          <div className="flex flex-col gap-3">
+            <MetricBar
+              label="Énergie"
+              value={profile.avg_energy}
+              caption={energyLabel(Math.round(profile.avg_energy * 100))}
+            />
+            <MetricBar
+              label="Positivité"
+              value={profile.avg_valence}
+              caption={valenceLabel(Math.round(profile.avg_valence * 100))}
+            />
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="text-gray-400 text-xs w-20 flex-shrink-0">BPM moy.</span>
+                <div className="flex-1" />
+                <span className="text-white font-medium text-sm">{Math.round(profile.avg_tempo)}</span>
+              </div>
+              <p className="text-gray-500 text-xs ml-[92px] mt-1">{tempoLabel(Math.round(profile.avg_tempo))}</p>
             </div>
-            <p className="text-gray-500 text-xs ml-[92px] mt-1">{tempoLabel(avgTempo)}</p>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Artistes */}
       {profile.top_artists?.length > 0 && (

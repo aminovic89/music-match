@@ -68,28 +68,31 @@ export default function DnaScreen({ profile, onComplete, onBack }) {
       <Text style={styles.title}>Ton ADN musical 🎵</Text>
       <Text style={styles.subtitle}>Voilà ce qu'on a trouvé à partir de tes titres</Text>
 
-      {/* Métriques audio */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>AUDIO</Text>
-        <MetricBar
-          label="Énergie"
-          value={profile.avg_energy}
-          caption={energyLabel(Math.round((profile.avg_energy || 0) * 100))}
-        />
-        <MetricBar
-          label="Positivité"
-          value={profile.avg_valence}
-          caption={valenceLabel(Math.round((profile.avg_valence || 0) * 100))}
-        />
-        <View>
-          <View style={styles.metricRow}>
-            <Text style={styles.metricLabel}>BPM moy.</Text>
-            <View style={styles.barBg} />
-            <Text style={styles.metricValueBold}>{Math.round(profile.avg_tempo || 0)}</Text>
+      {/* Métriques audio — seulement si on a de vraies audio features
+          (titres importés via Spotify) ; les titres Deezer/manuels n'en ont pas. */}
+      {profile.avg_energy != null && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>AUDIO</Text>
+          <MetricBar
+            label="Énergie"
+            value={profile.avg_energy}
+            caption={energyLabel(Math.round(profile.avg_energy * 100))}
+          />
+          <MetricBar
+            label="Positivité"
+            value={profile.avg_valence}
+            caption={valenceLabel(Math.round(profile.avg_valence * 100))}
+          />
+          <View>
+            <View style={styles.metricRow}>
+              <Text style={styles.metricLabel}>BPM moy.</Text>
+              <View style={styles.barBg} />
+              <Text style={styles.metricValueBold}>{Math.round(profile.avg_tempo)}</Text>
+            </View>
+            <Text style={styles.metricCaption}>{tempoLabel(Math.round(profile.avg_tempo))}</Text>
           </View>
-          <Text style={styles.metricCaption}>{tempoLabel(Math.round(profile.avg_tempo || 0))}</Text>
         </View>
-      </View>
+      )}
 
       {/* Artistes */}
       {profile.top_artists?.length > 0 && (
