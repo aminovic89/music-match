@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
+/* L'appli n'a qu'un seul thème (sombre, bg-gray-950 partout) — le fond
+   par défaut de <body> doit matcher, sinon le geste natif de swipe/retour
+   du navigateur mobile (recouvrement élastique en bordure d'écran) révèle
+   un éclair blanc entre le contenu de la page et le fond de <body>. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #030712;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -10,13 +14,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
