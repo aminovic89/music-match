@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
+/* L'appli n'a qu'un seul thème (sombre, bg-gray-950 partout) — le fond
+   par défaut de <body> doit matcher, sinon le geste natif de swipe/retour
+   du navigateur mobile (recouvrement élastique en bordure d'écran) révèle
+   un éclair blanc entre le contenu de la page et le fond de <body>. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #030712;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -12,11 +16,13 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* <html> aussi : le rebond élastique du scroll mobile (haut/bas) peut
+   dépasser <body> et révéler <html>, qui reste transparent/blanc sinon.
+   overscroll-behavior-y coupe le rebond lui-même, pour ne plus dépendre
+   du fond en dessous. */
+html {
+  background: var(--background);
+  overscroll-behavior-y: none;
 }
 
 body {
