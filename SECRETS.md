@@ -27,8 +27,8 @@ Vercel (web) et Render (api) déploient directement depuis leur propre intégrat
 | FRONTEND_URL               | Render (apps/api)       | URL Vercel (CORS + socket.io)                  |
 | BLOB_READ_WRITE_TOKEN      | Vercel + Render         | Token Vercel Blob (Storage → Blob → créer un store) |
 | SPOTIFY_/DEEZER_/SOUNDCLOUD_CLIENT_ID/SECRET | Render | Credentials OAuth des providers musicaux |
-| GMAIL_USER                 | Render (apps/api)       | Adresse Gmail utilisée pour l'envoi (email de reset) |
-| GMAIL_APP_PASSWORD         | Render (apps/api)       | Mot de passe d'application Gmail (myaccount.google.com/apppasswords) |
+| BREVO_API_KEY              | Render (apps/api)       | Clé API Brevo (email de reset de mot de passe) |
+| EMAIL_FROM                 | Render (apps/api)       | Adresse expéditrice vérifiée dans Brevo (Senders) |
 
 Voir [.env.prod.example](.env.prod.example) pour le détail complet.
 
