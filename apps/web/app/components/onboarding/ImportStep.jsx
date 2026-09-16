@@ -28,6 +28,7 @@ export default function ImportStep({ token, selected, onSelectedChange, onSubmit
   const [manualArtist, setManualArtist] = useState('');
   const [manualSuggestions, setManualSuggestions] = useState([]);
   const [manualSearching, setManualSearching] = useState(false);
+  const [belowMinAttempted, setBelowMinAttempted] = useState(false);
   const hasImportedSpotify = useRef(false);
 
   const importSpotifyTopTracks = useCallback(async () => {
@@ -112,6 +113,14 @@ export default function ImportStep({ token, selected, onSelectedChange, onSubmit
 
   const removeTrack = (trackId) => {
     onSelectedChange((prev) => prev.filter((t) => t.track_id !== trackId));
+  };
+
+  const handleSubmitClick = () => {
+    if (selected.length < MIN_TRACKS) {
+      setBelowMinAttempted(true);
+      return;
+    }
+    onSubmit(selected);
   };
 
   return (
@@ -229,8 +238,14 @@ export default function ImportStep({ token, selected, onSelectedChange, onSubmit
       </div>
 
       {selected.length < MIN_TRACKS && (
-        <p className="text-gray-500 text-xs text-center -mt-4 mb-4">
-          Encore {MIN_TRACKS - selected.length} titre{MIN_TRACKS - selected.length > 1 ? 's' : ''} pour continuer
+        <p
+          className={`text-xs text-center -mt-4 mb-4 ${
+            belowMinAttempted ? 'text-red-400 font-medium' : 'text-gray-500'
+          }`}
+        >
+          {belowMinAttempted
+            ? `Il te manque ${MIN_TRACKS - selected.length} titre${MIN_TRACKS - selected.length > 1 ? 's' : ''} pour enregistrer (minimum ${MIN_TRACKS})`
+            : `Encore ${MIN_TRACKS - selected.length} titre${MIN_TRACKS - selected.length > 1 ? 's' : ''} pour continuer`}
         </p>
       )}
 
@@ -242,8 +257,8 @@ export default function ImportStep({ token, selected, onSelectedChange, onSubmit
           ← Retour
         </button>
         <button
-          onClick={() => onSubmit(selected)}
-          disabled={selected.length < MIN_TRACKS || loading}
+          onClick={handleSubmitClick}
+          disabled={loading}
           className="flex-2 flex-grow-[2] py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-medium rounded-xl text-sm transition-colors"
         >
           {loading ? 'Analyse...' : `Analyser (${selected.length})`}

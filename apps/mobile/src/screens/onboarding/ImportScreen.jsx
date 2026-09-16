@@ -30,6 +30,7 @@ export default function ImportScreen({ token, selected, onSelectedChange, onSubm
   const [manualArtist, setManualArtist] = useState('');
   const [manualSuggestions, setManualSuggestions] = useState([]);
   const [manualSearching, setManualSearching] = useState(false);
+  const [belowMinAttempted, setBelowMinAttempted] = useState(false);
   const hasImportedSpotify = useRef(false);
 
   const importSpotifyTopTracks = useCallback(async () => {
@@ -114,6 +115,14 @@ export default function ImportScreen({ token, selected, onSelectedChange, onSubm
 
   const removeTrack = (trackId) => {
     onSelectedChange((prev) => prev.filter((t) => t.track_id !== trackId));
+  };
+
+  const handleSubmitPress = () => {
+    if (selected.length < MIN_TRACKS) {
+      setBelowMinAttempted(true);
+      return;
+    }
+    onSubmit(selected);
   };
 
   return (
@@ -217,8 +226,10 @@ export default function ImportScreen({ token, selected, onSelectedChange, onSubm
       />
 
       {selected.length < MIN_TRACKS && (
-        <Text style={styles.hintText}>
-          Encore {MIN_TRACKS - selected.length} titre{MIN_TRACKS - selected.length > 1 ? 's' : ''} pour continuer
+        <Text style={[styles.hintText, belowMinAttempted && styles.hintTextError]}>
+          {belowMinAttempted
+            ? `Il te manque ${MIN_TRACKS - selected.length} titre${MIN_TRACKS - selected.length > 1 ? 's' : ''} pour enregistrer (minimum ${MIN_TRACKS})`
+            : `Encore ${MIN_TRACKS - selected.length} titre${MIN_TRACKS - selected.length > 1 ? 's' : ''} pour continuer`}
         </Text>
       )}
 
@@ -228,9 +239,9 @@ export default function ImportScreen({ token, selected, onSelectedChange, onSubm
           <Text style={styles.backText}>← Retour</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.submitBtn, (selected.length < MIN_TRACKS || loading) && styles.submitDisabled]}
-          onPress={() => onSubmit(selected)}
-          disabled={selected.length < MIN_TRACKS || loading}
+          style={[styles.submitBtn, loading && styles.submitDisabled]}
+          onPress={handleSubmitPress}
+          disabled={loading}
         >
           {loading
             ? <ActivityIndicator color="#fff" />
@@ -284,6 +295,7 @@ const styles = StyleSheet.create({
   emptyText: { color: '#4b5563', fontSize: 12, fontStyle: 'italic' },
   selectedList: { flex: 1, marginBottom: 8 },
   hintText: { color: '#6b7280', fontSize: 12, textAlign: 'center', marginBottom: 12 },
+  hintTextError: { color: '#f87171', fontWeight: '600' },
   trackItem: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     padding: 12, borderRadius: 10, borderWidth: 1,
