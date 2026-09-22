@@ -28,7 +28,7 @@ async function persistToken(value: string | null) {
     } else {
       await SecureStore.deleteItemAsync(TOKEN_KEY);
     }
-  } catch (_err) {
+  } catch {
     // best-effort — la session reste valide en mémoire pour cette ouverture
   }
 }
