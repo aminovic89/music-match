@@ -92,6 +92,7 @@ export default function MusicPage() {
           token={token}
           selected={selectedTracks}
           onSelectedChange={setSelectedTracks}
+          autoImportSpotify={false}
           onSubmit={handleTracksSubmit}
           onBack={() => router.push('/home')}
           loading={loading}
