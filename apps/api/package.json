@@ -9,7 +9,8 @@
     "test": "jest --forceExit --passWithNoTests",
     "test:watch": "jest --watch",
     "db:migrate": "node src/database/migrate.js",
-    "db:seed": "node src/database/seed.js"
+    "db:seed": "node src/database/seed.js",
+    "db:recompute-profiles": "node src/database/recompute-profiles.js"
   },
   "dependencies": {
     "@music-match/shared": "*",

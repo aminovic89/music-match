@@ -4,7 +4,7 @@ const db = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
 const spotify = require('../services/spotify');
 const deezer = require('../services/deezer');
-const enrichment = require('../services/enrichment');
+const musicProfile = require('../services/musicProfile');
 
 const router = express.Router();
 
@@ -85,49 +85,7 @@ router.post('/tracks', requireAuth, async (req, res, next) => {
 
     // Audio features (ReccoBeats) et genres (Last.fm) — optionnels, un
     // échec de ces sources n'empêche pas l'enregistrement des titres.
-    const enrichedTracks = await enrichment.enrichTracks(tracks);
-
-    // Supprimer les anciens tracks
-    await db.query('DELETE FROM user_tracks WHERE user_id = $1', [req.userId]);
-
-    // Insérer les nouveaux tracks
-    for (let i = 0; i < enrichedTracks.length; i++) {
-      const track = enrichedTracks[i];
-
-      await db.query(
-        `INSERT INTO user_tracks
-          (user_id, track_id, track_name, artist_name, genre,
-           energy, valence, tempo, source, order_index)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [
-          req.userId, track.track_id, track.track_name,
-          track.artist_name || null, track.genre || track.genres[0]?.name || null,
-          track.energy ?? null, track.valence ?? null,
-          track.tempo ?? null, track.source, i,
-        ]
-      );
-    }
-
-    // Calculer et stocker le profil musical
-    const audioFeaturesList = enrichedTracks.filter((t) => t.energy != null);
-    const profile = spotify.computeMusicProfile(enrichedTracks, audioFeaturesList);
-
-    await db.query(
-      `INSERT INTO music_profiles
-        (user_id, top_genres, top_artists, avg_energy, avg_valence, avg_tempo, top_moods, last_synced_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-       ON CONFLICT (user_id)
-       DO UPDATE SET
-         top_genres = $2, top_artists = $3, avg_energy = $4,
-         avg_valence = $5, avg_tempo = $6, top_moods = $7,
-         last_synced_at = NOW()`,
-      [
-        req.userId,
-        profile.top_genres, profile.top_artists,
-        profile.avg_energy, profile.avg_valence, profile.avg_tempo,
-        profile.top_moods,
-      ]
-    );
+    const { profile } = await musicProfile.saveTracksAndProfile(req.userId, tracks);
 
     res.json({
       message: `${tracks.length} titres enregistrés`,
