@@ -6,6 +6,8 @@ const PREMIUM_MATCH_THRESHOLD = parseFloat(process.env.PREMIUM_MATCH_THRESHOLD |
 const DAILY_MATCH_LIMIT = parseInt(process.env.DAILY_MATCH_LIMIT || '5', 10);
 const DISCOVER_POOL_SIZE = 50;
 const DISCOVER_RESULT_SIZE = 20;
+const MAX_SHARED_ARTISTS = 5;
+const MAX_SHARED_MOODS = 3;
 
 class MatchingError extends Error {
   constructor(status, message) {
@@ -18,6 +20,23 @@ class MatchingError extends Error {
 // à cause de l'arrondi flottant, ce qui violerait le CHECK constraint en base.
 function clampScore(score) {
   return Math.min(1, Math.max(0, score));
+}
+
+// Intersection insensible à la casse ; on garde la casse et l'ordre du candidat.
+function sharedItems(mine, theirs, max) {
+  if (!Array.isArray(mine) || !Array.isArray(theirs) || mine.length === 0) return [];
+  const mySet = new Set(mine.filter((x) => typeof x === 'string').map((x) => x.trim().toLowerCase()));
+  const seen = new Set();
+  const out = [];
+  for (const item of theirs) {
+    if (typeof item !== 'string') continue;
+    const key = item.trim().toLowerCase();
+    if (!mySet.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+    if (out.length >= max) break;
+  }
+  return out;
 }
 
 async function getMusicProfile(userId) {
@@ -73,6 +92,10 @@ async function getDiscoverCandidates(userId) {
       age: c.age,
       city: c.city,
       score: clampScore(computeMatchScore(myProfile, c)),
+      shared_artists: sharedItems(myProfile.top_artists, c.top_artists, MAX_SHARED_ARTISTS),
+      shared_moods: sharedItems(myProfile.top_moods, c.top_moods, MAX_SHARED_MOODS),
+      top_artists: (c.top_artists || []).slice(0, 5),
+      top_moods: (c.top_moods || []).slice(0, 3),
     }))
     .filter((c) => c.score >= threshold)
     .sort((a, b) => b.score - a.score)
