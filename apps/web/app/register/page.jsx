@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import AuthShell from '../components/AuthShell';
+import Button from '../components/Button';
+import TextField, { PasswordField } from '../components/TextField';
+import TextLink from '../components/TextLink';
+import FormAlert from '../components/Alert';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -42,74 +46,68 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <h1 className="text-2xl font-semibold text-white text-center mb-2">
-          Rejoins Music Match 🎧
-        </h1>
-        <p className="text-gray-400 text-center text-sm mb-8">
-          Trouve des gens qui ressentent la musique comme toi
-        </p>
+    <AuthShell
+      title="Rejoins Music Match"
+      subtitle="Trouve des gens qui ressentent la musique comme toi"
+      footer={
+        <>
+          Déjà un compte ?{' '}
+          <TextLink href="/login">Connecte-toi</TextLink>
+        </>
+      }
+    >
+      <FormAlert id="register-error" message={error} className="mb-4" />
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm text-center">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <input
+      <form
+        onSubmit={handleSubmit}
+        aria-describedby={error ? 'register-error' : undefined}
+        className="flex flex-col gap-4"
+      >
+        <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-3">
+          <TextField
+            label="Prénom"
             type="text"
             required
+            autoComplete="given-name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
-            placeholder="Prénom"
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
           />
-          <input
+          <TextField
+            label="Âge"
             type="number"
+            inputMode="numeric"
             required
             min={18}
             max={99}
             value={age}
             onChange={(e) => setAge(e.target.value)}
-            placeholder="Âge"
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
           />
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
-          />
-          <input
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Mot de passe (8 caractères min.)"
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
-          />
+        </div>
+        <TextField
+          label="Email"
+          type="email"
+          required
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="toi@exemple.com"
+        />
+        <PasswordField
+          label="Mot de passe"
+          hint="8 caractères minimum"
+          required
+          minLength={8}
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 mt-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-medium rounded-xl transition-colors"
-          >
-            {loading ? 'Création...' : 'Créer mon compte'}
-          </button>
-        </form>
+        <Button type="submit" loading={loading} className="mt-1">
+          {loading ? 'Création...' : 'Créer mon compte'}
+        </Button>
 
-        <p className="text-gray-500 text-sm text-center mt-6">
-          Déjà un compte ?{' '}
-          <Link href="/login" className="text-violet-400 hover:text-violet-300">
-            Connecte-toi
-          </Link>
-        </p>
-      </div>
-    </div>
+        <p className="text-center text-xs text-muted">Réservé aux 18 ans et plus.</p>
+      </form>
+    </AuthShell>
   );
 }

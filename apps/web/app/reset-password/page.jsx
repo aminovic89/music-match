@@ -2,7 +2,11 @@
 
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import AuthShell from '../components/AuthShell';
+import Button from '../components/Button';
+import { PasswordField } from '../components/TextField';
+import TextLink from '../components/TextLink';
+import FormAlert, { Alert } from '../components/Alert';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -46,58 +50,53 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm text-center">
-        Lien invalide.{' '}
-        <Link href="/forgot-password" className="text-violet-400 hover:text-violet-300">
-          Demander un nouveau lien
-        </Link>
+      <div role="alert">
+        <Alert tone="error">
+          Lien invalide.{' '}
+          <TextLink href="/forgot-password">Demander un nouveau lien</TextLink>
+        </Alert>
       </div>
     );
   }
 
   if (done) {
     return (
-      <div className="p-4 bg-violet-500/10 border border-violet-500 rounded-xl text-gray-300 text-sm text-center">
-        Mot de passe mis à jour. Redirection...
+      <div role="status">
+        <Alert tone="success">Mot de passe mis à jour. Redirection...</Alert>
       </div>
     );
   }
 
   return (
     <>
-      {error && (
-        <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm text-center">
-          {error}
-        </div>
-      )}
+      <FormAlert id="reset-error" message={error} className="mb-4" />
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <input
-          type="password"
+      <form
+        onSubmit={handleSubmit}
+        aria-describedby={error ? 'reset-error' : undefined}
+        className="flex flex-col gap-4"
+      >
+        <PasswordField
+          label="Nouveau mot de passe"
+          hint="8 caractères minimum"
           required
           minLength={8}
+          autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Nouveau mot de passe (8 caractères min.)"
-          className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
         />
-        <input
-          type="password"
+        <PasswordField
+          label="Confirme le mot de passe"
           required
           minLength={8}
+          autoComplete="new-password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          placeholder="Confirme le mot de passe"
-          className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
         />
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-3 mt-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-medium rounded-xl transition-colors"
-        >
+        <Button type="submit" loading={loading} className="mt-1">
           {loading ? 'Mise à jour...' : 'Réinitialiser le mot de passe'}
-        </button>
+        </Button>
       </form>
     </>
   );
@@ -105,19 +104,18 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <h1 className="text-2xl font-semibold text-white text-center mb-2">
-          Nouveau mot de passe
-        </h1>
-        <p className="text-gray-400 text-center text-sm mb-8">
-          Choisis un nouveau mot de passe pour ton compte
-        </p>
-
-        <Suspense fallback={null}>
-          <ResetPasswordForm />
-        </Suspense>
-      </div>
-    </div>
+    <AuthShell
+      title="Nouveau mot de passe"
+      subtitle="Choisis un nouveau mot de passe pour ton compte"
+      footer={
+        <TextLink href="/login" standalone>
+          <span aria-hidden="true">←&nbsp;</span>Retour à la connexion
+        </TextLink>
+      }
+    >
+      <Suspense fallback={null}>
+        <ResetPasswordForm />
+      </Suspense>
+    </AuthShell>
   );
 }
