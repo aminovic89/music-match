@@ -6,9 +6,12 @@ const TONES = {
   neutral: 'border-line bg-surface-2 text-fg',
 };
 
-export default function Chip({ tone = 'neutral', className = '', children }) {
+// size "sm" : variante compacte (carte de découverte).
+const SIZES = { md: 'px-3 py-1 text-sm', sm: 'px-2.5 py-0.5 text-[0.8125rem] leading-5' };
+
+export default function Chip({ tone = 'neutral', size = 'md', className = '', children }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${TONES[tone]} ${className}`}>
+    <span className={`inline-flex items-center rounded-full border font-medium ${SIZES[size]} ${TONES[tone]} ${className}`}>
       {children}
     </span>
   );

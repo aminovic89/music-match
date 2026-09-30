@@ -12,6 +12,7 @@ import { LogoMark } from '@/components/Logo';
 import PageContainer from '@/components/PageContainer';
 import PageHeader from '@/components/PageHeader';
 import { EmptyState, LoadingState } from '@/components/States';
+import TasteChips, { sharedAnnouncement } from '@/components/TasteChips';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -188,23 +189,29 @@ export default function DiscoverPage() {
           {candidates.length - currentIndex > 1 && (
             <div aria-hidden="true" className="absolute inset-x-6 top-0 bottom-8 rounded-card border border-line bg-surface/60" />
           )}
-          <div className="relative rounded-card border border-line bg-surface p-6 shadow-card sm:p-8">
-            <p className="mb-4 text-center text-xs font-medium text-muted">
+          {/* Mobile : avatar à côté du nom pour garder Passer / Liker visibles
+              sans scroll sur un écran 375×667 ; à partir de sm, mise en page
+              centrée avec grand avatar. */}
+          <div className="relative rounded-card border border-line bg-surface p-5 shadow-card sm:p-8">
+            <p className="mb-3 text-center text-xs font-medium text-muted sm:mb-4">
               Profil {currentIndex + 1} sur {candidates.length}
             </p>
-            <div className="flex flex-col items-center gap-3 text-center">
-              <Avatar avatarUrl={candidate.avatar_url} firstName={candidate.first_name} size={112} ring />
-              <div>
-                <h2 id="candidate-name" className="text-2xl font-semibold tracking-tight text-fg">
+            <div className="flex items-center gap-4 sm:flex-col sm:gap-3 sm:text-center">
+              <Avatar avatarUrl={candidate.avatar_url} firstName={candidate.first_name} size={72} ring className="sm:hidden" />
+              <Avatar avatarUrl={candidate.avatar_url} firstName={candidate.first_name} size={112} ring className="hidden sm:block" />
+              <div className="min-w-0">
+                <h2 id="candidate-name" className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">
                   {candidate.first_name}, {candidate.age}
                 </h2>
-                {candidate.city && <p className="mt-1 text-sm text-muted">{candidate.city}</p>}
+                {candidate.city && <p className="mt-0.5 truncate text-sm text-muted sm:mt-1">{candidate.city}</p>}
               </div>
             </div>
 
-            <Compatibility score={candidate.score} className="mt-6" />
+            <Compatibility score={candidate.score} className="mt-5 sm:mt-6" />
 
-            <div className="mt-8 grid grid-cols-2 gap-3">
+            <TasteChips candidate={candidate} className="mt-5" />
+
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8">
               <Button variant="secondary" onClick={handlePass} disabled={liking}>
                 <Icon name="x" />
                 Passer
@@ -218,6 +225,7 @@ export default function DiscoverPage() {
           {/* Annonce le changement de profil aux lecteurs d'écran */}
           <p className="sr-only" aria-live="polite">
             {candidate.first_name}, {candidate.age} ans, {Math.round(candidate.score * 100)}% compatible
+            {sharedAnnouncement(candidate) ? `, ${sharedAnnouncement(candidate)}` : ''}
           </p>
         </article>
       ) : (

@@ -6,17 +6,8 @@ import Chip from '../Chip';
 import Section from '../Section';
 import StickyBar from '../StickyBar';
 import { EmptyState } from '../States';
+import { moodInfo } from '../moods';
 
-const MOODS_LABELS = {
-  energetic: { label: 'Énergique', emoji: '⚡' },
-  chill: { label: 'Chill', emoji: '😌' },
-  happy: { label: 'Joyeux', emoji: '😊' },
-  melancholic: { label: 'Mélancolique', emoji: '🌙' },
-  danceable: { label: 'Dansant', emoji: '💃' },
-  intense: { label: 'Intense', emoji: '🔥' },
-  romantic: { label: 'Romantique', emoji: '🌹' },
-  neutral: { label: 'Neutre', emoji: '🎵' },
-};
 
 // Mêmes seuils que deriveMoods (apps/api/src/services/spotify.js), pour que
 // la légende reste cohérente avec les moods affichés juste en dessous.
@@ -130,7 +121,7 @@ export default function DnaStep({ titleAs: Title = 'h1', profile, onComplete, on
             <Section title="Tes moods">
               <ul className="flex flex-wrap gap-2">
                 {profile.top_moods.map((mood) => {
-                  const info = MOODS_LABELS[mood] || { label: mood, emoji: '🎵' };
+                  const info = moodInfo(mood);
                   return (
                     <li key={mood}>
                       <Chip tone="accent2">
