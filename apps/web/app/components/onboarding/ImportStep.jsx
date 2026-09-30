@@ -26,7 +26,7 @@ function isDuplicate(list, track) {
   );
 }
 
-export default function ImportStep({ titleAs: Title = 'h1', token, selected, onSelectedChange, onSubmit, onBack, loading }) {
+export default function ImportStep({ titleAs: Title = 'h1', token, selected, onSelectedChange, onSubmit, onBack, loading, autoImportSpotify = true }) {
   const [spotifyConnected, setSpotifyConnected] = useState(false);
   const [importingSpotify, setImportingSpotify] = useState(false);
   const [manualName, setManualName] = useState('');
@@ -35,6 +35,8 @@ export default function ImportStep({ titleAs: Title = 'h1', token, selected, onS
   const [manualSearching, setManualSearching] = useState(false);
   const [belowMinAttempted, setBelowMinAttempted] = useState(false);
   const hasImportedSpotify = useRef(false);
+  // Sélection vide à l'arrivée sur l'écran ? (valeur initiale uniquement)
+  const startedEmpty = useRef(selected.length === 0);
 
   const importSpotifyTopTracks = useCallback(async () => {
     setImportingSpotify(true);
@@ -64,13 +66,15 @@ export default function ImportStep({ titleAs: Title = 'h1', token, selected, onS
       .then((r) => r.json())
       .then((data) => {
         setSpotifyConnected(data.connected);
-        if (data.connected && !hasImportedSpotify.current) {
+        // Import auto uniquement à la demande ET sélection vide (onboarding) :
+        // en édition il réinjecterait les titres que l'utilisateur a retirés.
+        if (data.connected && autoImportSpotify && startedEmpty.current && !hasImportedSpotify.current) {
           hasImportedSpotify.current = true;
           importSpotifyTopTracks();
         }
       })
       .catch(() => {});
-  }, [token, importSpotifyTopTracks]);
+  }, [token, autoImportSpotify, importSpotifyTopTracks]);
 
   // Suggestions Deezer (recherche publique, pas besoin de compte connecté)
   // pour aider à la saisie manuelle. Recherche combinée titre + artiste,

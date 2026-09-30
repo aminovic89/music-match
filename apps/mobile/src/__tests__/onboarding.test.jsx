@@ -48,6 +48,7 @@ function renderImport(props = {}, initial = []) {
             selected={selected}
             onSelectedChange={setSelected}
             onSubmit={onSubmit}
+            autoImportSpotify={props.autoImportSpotify}
             onBack={props.onBack || (() => {})}
             loading={false}
             error={null}
@@ -111,6 +112,29 @@ describe('ImportScreen', () => {
       headers: { Authorization: 'Bearer tok' },
     });
     expect(getSelected()).toHaveLength(3);
+    expect(hasText(r.root, '✓ Connecté')).toBe(true);
+    r.unmount();
+  });
+
+  it("sélection déjà remplie : pas d'import automatique Spotify", async () => {
+    mockFetch({ '/spotify/status': { connected: true }, '/spotify/top-tracks': { tracks: tracks(3) } });
+    const own = tracks(10).map((t) => ({ ...t, track_id: `own${t.track_id}`, track_name: `Own ${t.track_name}` }));
+    const { tree, getSelected } = renderImport({}, own);
+    const r = await render(tree);
+    await flush();
+    await flush();
+    expect(getSelected()).toHaveLength(10);
+    expect(global.fetch).not.toHaveBeenCalledWith(`${API}/api/music/spotify/top-tracks`, expect.anything());
+    r.unmount();
+  });
+
+  it("autoImportSpotify={false} : pas d'import automatique, statut connecté affiché", async () => {
+    mockFetch({ '/spotify/status': { connected: true }, '/spotify/top-tracks': { tracks: tracks(3) } });
+    const { tree, getSelected } = renderImport({ autoImportSpotify: false });
+    const r = await render(tree);
+    await flush();
+    await flush();
+    expect(getSelected()).toHaveLength(0);
     expect(hasText(r.root, '✓ Connecté')).toBe(true);
     r.unmount();
   });
