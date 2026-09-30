@@ -97,9 +97,36 @@ async function searchTracks(query, accessToken, limit = 10) {
   return primaryOnly.length > 0 ? primaryOnly : tracks;
 }
 
+// Deezer limite à 50 requêtes / 5 s — on reste largement en dessous
+const ISRC_CONCURRENCY = 5;
+
+/**
+ * Récupère l'ISRC de titres Deezer (absent des résultats de recherche, présent
+ * sur /track/{id}). Renvoie une map track_id → ISRC ; un titre en échec est
+ * simplement omis.
+ */
+async function getTrackIsrcs(trackIds) {
+  const unique = [...new Set(trackIds.filter(Boolean))];
+  const isrcs = {};
+
+  for (let i = 0; i < unique.length; i += ISRC_CONCURRENCY) {
+    const batch = unique.slice(i, i + ISRC_CONCURRENCY);
+    const results = await Promise.allSettled(
+      batch.map((id) => axios.get(`${DEEZER_API_URL}/track/${id}`, { timeout: 5000 }))
+    );
+    results.forEach((r, j) => {
+      const isrc = r.status === 'fulfilled' ? r.value.data?.isrc : null;
+      if (isrc) isrcs[batch[j]] = isrc;
+    });
+  }
+
+  return isrcs;
+}
+
 module.exports = {
   getAuthUrl,
   exchangeCode,
   getValidToken,
   searchTracks,
+  getTrackIsrcs,
 };

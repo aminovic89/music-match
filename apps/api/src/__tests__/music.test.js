@@ -11,7 +11,6 @@ jest.mock('../services/spotify', () => ({
   getValidToken: jest.fn(),
   searchTracks: jest.fn(),
   getTopTracks: jest.fn(),
-  getAudioFeatures: jest.fn(),
   computeMusicProfile: jest.fn(),
   deriveMoods: jest.fn(),
   exchangeCode: jest.fn(),
@@ -23,6 +22,11 @@ jest.mock('../services/deezer', () => ({
   getValidToken: jest.fn(),
   searchTracks: jest.fn(),
   exchangeCode: jest.fn(),
+}));
+
+// Mock l'enrichissement (ReccoBeats / Last.fm) : renvoie les titres tels quels
+jest.mock('../services/enrichment', () => ({
+  enrichTracks: jest.fn(async (tracks) => tracks.map((t) => ({ ...t, genres: [] }))),
 }));
 
 let testUserId;
@@ -174,10 +178,6 @@ describe('POST /api/music/tracks', () => {
   });
 
   it('enregistre les tracks et calcule le profil', async () => {
-    spotify.getValidToken.mockResolvedValue('mock-token');
-    spotify.getAudioFeatures.mockResolvedValue([
-      { id: 'track1', energy: 0.8, valence: 0.6, tempo: 120, danceability: 0.7 },
-    ]);
     spotify.computeMusicProfile.mockReturnValue({
       top_genres: ['pop', 'r&b'],
       top_artists: ['Artist 1'],
@@ -205,10 +205,6 @@ describe('POST /api/music/tracks', () => {
   });
 
   it('accepte les champs album_name/preview_url/image_url renvoyés par la recherche', async () => {
-    spotify.getValidToken.mockResolvedValue('mock-token');
-    spotify.getAudioFeatures.mockResolvedValue([
-      { id: 'track1', energy: 0.8, valence: 0.6, tempo: 120, danceability: 0.7 },
-    ]);
     spotify.computeMusicProfile.mockReturnValue({
       top_genres: ['pop'],
       top_artists: ['Artist 1'],
@@ -256,8 +252,6 @@ describe('POST /api/music/tracks', () => {
   });
 
   it('accepte plus de 20 titres (pas de maximum produit)', async () => {
-    spotify.getValidToken.mockResolvedValue('mock-token');
-    spotify.getAudioFeatures.mockResolvedValue([]);
     spotify.computeMusicProfile.mockReturnValue({
       top_genres: [], top_artists: [], avg_energy: 0, avg_valence: 0, avg_tempo: 0, top_moods: ['neutral'],
     });

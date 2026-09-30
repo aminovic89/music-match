@@ -4,6 +4,7 @@ const db = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
 const spotify = require('../services/spotify');
 const deezer = require('../services/deezer');
+const enrichment = require('../services/enrichment');
 
 const router = express.Router();
 
@@ -82,30 +83,16 @@ router.post('/tracks', requireAuth, async (req, res, next) => {
     const { error, value: tracks } = tracksSchema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
-    // Récupérer les audio features pour les titres Spotify
-    const spotifyTrackIds = tracks
-      .filter((t) => t.source === 'spotify')
-      .map((t) => t.track_id);
-
-    let audioFeaturesMap = {};
-    if (spotifyTrackIds.length > 0) {
-      try {
-        const accessToken = await spotify.getValidToken(req.userId);
-        const features = await spotify.getAudioFeatures(spotifyTrackIds, accessToken);
-        features.forEach((f) => { audioFeaturesMap[f.id] = f; });
-      } catch (_err) {
-        // Si pas de token Spotify, on continue sans audio features
-        console.log('Audio features non disponibles — token Spotify manquant');
-      }
-    }
+    // Audio features (ReccoBeats) et genres (Last.fm) — optionnels, un
+    // échec de ces sources n'empêche pas l'enregistrement des titres.
+    const enrichedTracks = await enrichment.enrichTracks(tracks);
 
     // Supprimer les anciens tracks
     await db.query('DELETE FROM user_tracks WHERE user_id = $1', [req.userId]);
 
     // Insérer les nouveaux tracks
-    for (let i = 0; i < tracks.length; i++) {
-      const track = tracks[i];
-      const features = audioFeaturesMap[track.track_id] || {};
+    for (let i = 0; i < enrichedTracks.length; i++) {
+      const track = enrichedTracks[i];
 
       await db.query(
         `INSERT INTO user_tracks
@@ -114,20 +101,16 @@ router.post('/tracks', requireAuth, async (req, res, next) => {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           req.userId, track.track_id, track.track_name,
-          track.artist_name || null, track.genre || null,
-          features.energy || null, features.valence || null,
-          features.tempo || null, track.source, i,
+          track.artist_name || null, track.genre || track.genres[0]?.name || null,
+          track.energy ?? null, track.valence ?? null,
+          track.tempo ?? null, track.source, i,
         ]
       );
     }
 
     // Calculer et stocker le profil musical
-    const tracksWithFeatures = tracks.map((t) => ({
-      ...t,
-      ...(audioFeaturesMap[t.track_id] || {}),
-    }));
-    const audioFeaturesList = Object.values(audioFeaturesMap);
-    const profile = spotify.computeMusicProfile(tracksWithFeatures, audioFeaturesList);
+    const audioFeaturesList = enrichedTracks.filter((t) => t.energy != null);
+    const profile = spotify.computeMusicProfile(enrichedTracks, audioFeaturesList);
 
     await db.query(
       `INSERT INTO music_profiles

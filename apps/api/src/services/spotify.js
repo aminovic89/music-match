@@ -151,23 +151,11 @@ async function getTopTracks(accessToken, limit = 20) {
 }
 
 /**
- * Récupère les audio features d'une liste de track IDs
- */
-async function getAudioFeatures(trackIds, accessToken) {
-  const response = await axios.get(`${SPOTIFY_API_URL}/audio-features`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    params: { ids: trackIds.join(',') },
-  });
-
-  return response.data.audio_features.filter(Boolean);
-}
-
-/**
  * Calcule le profil musical à partir des tracks et audio features
  */
 function computeMusicProfile(tracks, audioFeatures) {
   // Moyennes des audio features — null (pas 0) quand aucune donnée n'est
-  // disponible (ex. titres Deezer/manuels, sans audio features Spotify),
+  // disponible (ex. titres manuels, ou introuvables chez ReccoBeats),
   // pour distinguer "pas de données" de "vraie moyenne à zéro".
   const avg = (key) => {
     const vals = audioFeatures.map((f) => f[key]).filter((v) => v != null);
@@ -189,10 +177,16 @@ function computeMusicProfile(tracks, audioFeatures) {
     .slice(0, 5)
     .map(([name]) => name);
 
-  // Genres extraits depuis les tracks (si disponibles)
+  // Genres : tags de l'artiste pondérés ({ name, weight }, via Last.fm),
+  // cumulés sur chaque titre — un artiste très présent pèse davantage.
+  // Repli sur le champ `genre` simple s'il est fourni.
   const genreCount = {};
   tracks.forEach((t) => {
-    if (t.genre) {
+    if (Array.isArray(t.genres) && t.genres.length > 0) {
+      t.genres.forEach((g) => {
+        genreCount[g.name] = (genreCount[g.name] || 0) + (g.weight ?? 1);
+      });
+    } else if (t.genre) {
       genreCount[t.genre] = (genreCount[t.genre] || 0) + 1;
     }
   });
@@ -232,7 +226,6 @@ module.exports = {
   getValidToken,
   searchTracks,
   getTopTracks,
-  getAudioFeatures,
   computeMusicProfile,
   deriveMoods,
 };
