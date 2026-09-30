@@ -12,11 +12,25 @@ import { LoadingState } from '@/components/States';
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const STEPS = { IMPORT: 0, DNA: 1 };
 
+function toSelection(tracks) {
+  return (tracks || []).map((t) => ({
+    track_id: t.track_id,
+    track_name: t.track_name,
+    artist_name: t.artist_name,
+    source: t.source,
+  }));
+}
+
 export default function MusicPage() {
   const router = useRouter();
   const [step, setStep] = useState(STEPS.IMPORT);
   const [selectedTracks, setSelectedTracks] = useState([]);
+  // Titres tels qu'enregistrés : restaurés si l'utilisateur annule ses
+  // modifications et revient à la synthèse sans relancer l'analyse.
+  const [savedTracks, setSavedTracks] = useState([]);
   const [musicProfile, setMusicProfile] = useState(null);
+  const [focusAdd, setFocusAdd] = useState(false);
+  const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
@@ -42,14 +56,15 @@ export default function MusicPage() {
     if (!token) { router.replace('/login'); return; }
     apiCall('GET', '/api/music/profile')
       .then((data) => {
-        setSelectedTracks(
-          (data.tracks || []).map((t) => ({
-            track_id: t.track_id,
-            track_name: t.track_name,
-            artist_name: t.artist_name,
-            source: t.source,
-          }))
-        );
+        const tracks = toSelection(data.tracks);
+        setSelectedTracks(tracks);
+        setSavedTracks(tracks);
+        // Profil déjà analysé : on affiche sa synthèse plutôt que la liste
+        // des titres, l'édition reste accessible depuis la synthèse.
+        if (data.profile) {
+          setMusicProfile(data.profile);
+          setStep(STEPS.DNA);
+        }
       })
       .catch(() => {}) // pas encore de profil musical — on démarre à vide
       .finally(() => setReady(true));
@@ -60,13 +75,28 @@ export default function MusicPage() {
     setError(null);
     try {
       const data = await apiCall('POST', '/api/music/tracks', tracks);
-      setMusicProfile(data.profile);
+      setMusicProfile({ ...data.profile, tracks_count: tracks.length });
+      setSavedTracks(tracks);
+      setNotice('Profil musical mis à jour');
       setStep(STEPS.DNA);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const openEditor = (withFocus) => {
+    setFocusAdd(withFocus);
+    setNotice(null);
+    setError(null);
+    setStep(STEPS.IMPORT);
+  };
+
+  const cancelEdit = () => {
+    setSelectedTracks(savedTracks);
+    setError(null);
+    setStep(STEPS.DNA);
   };
 
   // En-tête commun : on modifie sa musique (pas un nouvel onboarding).
@@ -94,7 +124,10 @@ export default function MusicPage() {
           onSelectedChange={setSelectedTracks}
           autoImportSpotify={false}
           onSubmit={handleTracksSubmit}
-          onBack={() => router.push('/home')}
+          // Avec un profil existant, "Annuler" ramène à la synthèse.
+          onBack={musicProfile ? cancelEdit : () => router.push('/home')}
+          backLabel={musicProfile ? 'Annuler' : 'Retour'}
+          focusManualInput={focusAdd}
           loading={loading}
         />
       )}
@@ -103,8 +136,10 @@ export default function MusicPage() {
         <DnaStep
           titleAs="h2"
           profile={musicProfile}
-          onComplete={() => router.push('/home')}
-          onBack={() => setStep(STEPS.IMPORT)}
+          notice={notice}
+          onAddTracks={() => openEditor(true)}
+          onEditTracks={() => openEditor(false)}
+          onBack={() => openEditor(false)}
         />
       )}
     </PageContainer>

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { act } from 'react';
+import { TextInput } from 'react-native';
 import { apiClient } from '@music-match/shared';
 import ProfileScreen from '../screens/ProfileScreen';
 import MusicEditScreen from '../screens/MusicEditScreen';
@@ -185,10 +186,100 @@ describe('MusicEditScreen', () => {
       await press(control(r.root, 'button', 'Retirer Spotify 1'));
       await press(control(r.root, 'button', 'Analyser (10)'));
       await flush();
-      await press(control(r.root, 'button', 'Modifier mes titres'));
+      await press(control(r.root, 'button', 'Modifier ou supprimer mes titres'));
       await flush();
       await flush();
       expect(control(r.root, 'button', 'Analyser (10)')).toBeTruthy();
+      r.unmount();
+    });
+  });
+
+  describe('profil déjà analysé', () => {
+    const profile = { top_artists: ['Angèle'], top_moods: [], avg_energy: null, tracks_count: 10 };
+
+    it('affiche la synthèse au lieu des titres saisis', async () => {
+      apiClient.getMusicProfile.mockResolvedValue({ profile, tracks: saved });
+      const r = await render(<MusicEditScreen token="tok" onBack={() => {}} />);
+      await flush();
+
+      expect(hasText(r.root, 'Ton ADN musical')).toBe(true);
+      expect(hasText(r.root, "Synthèse de l'analyse de tes 10 titres")).toBe(true);
+      expect(hasText(r.root, 'Angèle')).toBe(true);
+      expect(r.root.findAll((n) => n.props.accessibilityLabel === 'Retirer Titre 0')).toHaveLength(0);
+      expect(control(r.root, 'button', 'Ajouter des titres')).toBeTruthy();
+      expect(control(r.root, 'button', 'Modifier ou supprimer mes titres')).toBeTruthy();
+      r.unmount();
+    });
+
+    it('ajout depuis la synthèse, puis nouvelle analyse avec confirmation', async () => {
+      apiClient.getMusicProfile.mockResolvedValue({ profile, tracks: saved });
+      apiClient.saveTracks.mockResolvedValue({ profile: { top_artists: ['Angèle'] } });
+      const r = await render(<MusicEditScreen token="tok" onBack={() => {}} />);
+      await flush();
+
+      await press(control(r.root, 'button', 'Ajouter des titres'));
+      await flush();
+      expect(input(r.root, 'Titre').props.autoFocus).toBe(true);
+      await type(r.root, 'Titre', 'Balance ton quoi');
+      await type(r.root, 'Artiste', 'Angèle');
+      await press(control(r.root, 'button', 'Ajouter ce titre'));
+      await press(control(r.root, 'button', 'Analyser (11)'));
+      await flush();
+
+      const payload = apiClient.saveTracks.mock.calls[0][0];
+      expect(payload).toHaveLength(11);
+      expect(payload[10]).toMatchObject({ track_name: 'Balance ton quoi', artist_name: 'Angèle', source: 'manual' });
+      expect(hasText(r.root, "Synthèse de l'analyse de tes 11 titres")).toBe(true);
+      const ok = r.root.findAll((n) => typeof n.type === 'string' && n.props.accessibilityLabel === 'Succès : Profil musical mis à jour');
+      expect(ok.length).toBeGreaterThan(0);
+      r.unmount();
+    });
+
+    it('Annuler revient à la synthèse sans garder les suppressions', async () => {
+      apiClient.getMusicProfile.mockResolvedValue({ profile, tracks: saved });
+      const r = await render(<MusicEditScreen token="tok" onBack={() => {}} />);
+      await flush();
+
+      await press(control(r.root, 'button', 'Modifier ou supprimer mes titres'));
+      await press(control(r.root, 'button', 'Retirer Titre 0'));
+      expect(control(r.root, 'button', 'Analyser (9)')).toBeTruthy();
+      await press(control(r.root, 'button', 'Annuler'));
+      expect(hasText(r.root, 'Ton ADN musical')).toBe(true);
+      expect(apiClient.saveTracks).not.toHaveBeenCalled();
+
+      await press(control(r.root, 'button', 'Modifier ou supprimer mes titres'));
+      expect(control(r.root, 'button', 'Analyser (10)')).toBeTruthy();
+      r.unmount();
+    });
+
+    it('modifie un titre en place (devient une saisie manuelle)', async () => {
+      apiClient.getMusicProfile.mockResolvedValue({ profile, tracks: saved });
+      apiClient.saveTracks.mockResolvedValue({ profile });
+      const r = await render(<MusicEditScreen token="tok" onBack={() => {}} />);
+      await flush();
+
+      await press(control(r.root, 'button', 'Modifier ou supprimer mes titres'));
+      await press(control(r.root, 'button', 'Modifier Titre 2'));
+      // Les champs du formulaire de modification suivent ceux de l'ajout manuel.
+      const editField = (label) =>
+        r.root.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === label)[1];
+      expect(editField('Titre').props.value).toBe('Titre 2');
+      await act(async () => { editField('Titre').props.onChangeText('Titre corrigé'); });
+      await press(control(r.root, 'button', 'Valider'));
+
+      // Doublon refusé
+      await press(control(r.root, 'button', 'Modifier Titre 3'));
+      await act(async () => { editField('Titre').props.onChangeText('Titre 4'); });
+      await act(async () => { editField('Artiste').props.onChangeText('Artiste 4'); });
+      await press(control(r.root, 'button', 'Valider'));
+      expect(hasText(r.root, 'Ce titre est déjà dans ta liste')).toBe(true);
+      await press(control(r.root, 'button', 'Annuler'));
+
+      await press(control(r.root, 'button', 'Analyser (10)'));
+      await flush();
+      const payload = apiClient.saveTracks.mock.calls[0][0];
+      expect(payload[2]).toMatchObject({ track_name: 'Titre corrigé', artist_name: 'Artiste 2', source: 'manual' });
+      expect(payload[3]).toMatchObject({ track_id: 't3', track_name: 'Titre 3' });
       r.unmount();
     });
   });
