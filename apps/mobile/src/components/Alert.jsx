@@ -39,15 +39,21 @@ export function Alert({ tone = 'error', message, style }) {
   );
 }
 
-// Alerte de formulaire : rendue si `message`, et annoncée à chaque nouveau
-// message. iOS n'a pas de live region → announceForAccessibility ;
-// Android s'appuie sur accessibilityLiveRegion.
-export default function FormAlert({ message, tone = 'error', style }) {
+// Annonce un message aux lecteurs d'écran à chaque changement (iOS n'a pas
+// de live region → announceForAccessibility ; sur Android, l'élément
+// affiché doit porter accessibilityLiveRegion).
+export function useAnnounce(message) {
   useEffect(() => {
     if (message && Platform.OS === 'ios') {
-      AccessibilityInfo.announceForAccessibility(`${TONES[tone].prefix} : ${message}`);
+      AccessibilityInfo.announceForAccessibility(message);
     }
-  }, [message, tone]);
+  }, [message]);
+}
+
+// Alerte de formulaire : rendue si `message`, et annoncée à chaque nouveau
+// message.
+export default function FormAlert({ message, tone = 'error', style }) {
+  useAnnounce(message ? `${TONES[tone].prefix} : ${message}` : null);
 
   if (!message) return null;
   return <Alert tone={tone} message={message} style={style} />;

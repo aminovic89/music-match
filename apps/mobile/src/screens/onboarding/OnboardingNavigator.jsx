@@ -1,11 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
+import StepProgress from '../../components/StepProgress';
+import { colors } from '../../theme';
 import IntentScreen from './IntentScreen';
 import ImportScreen from './ImportScreen';
 import DnaScreen from './DnaScreen';
 
 const API = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 const STEPS = { INTENT: 0, IMPORT: 1, DNA: 2 };
+// Libellés affichés à côté de "Étape n sur 3".
+const STEP_LABELS = ['Ton intention', 'Ta musique', 'Ton ADN musical'];
 
 export default function OnboardingNavigator({ token, initialStep, onComplete }) {
   const [step, setStep] = useState(initialStep === 'import' ? STEPS.IMPORT : STEPS.INTENT);
@@ -57,20 +61,17 @@ export default function OnboardingNavigator({ token, initialStep, onComplete }) 
     }
   };
 
+  // Chaque étape est un écran complet (Screen) ; la progression est
+  // passée comme en-tête pour rester fixe en haut pendant le scroll.
+  const progress = (
+    <StepProgress current={step + 1} total={3} label={STEP_LABELS[step]} />
+  );
+
   return (
     <View style={styles.container}>
-      {/* Progress dots */}
-      <View style={styles.dots}>
-        {[0, 1, 2].map((i) => (
-          <View
-            key={i}
-            style={[styles.dot, i === step && styles.dotActive]}
-          />
-        ))}
-      </View>
-
       {step === STEPS.INTENT && (
         <IntentScreen
+          header={progress}
           initialIntent={intent}
           onSave={handleIntentSave}
           loading={loading}
@@ -80,6 +81,7 @@ export default function OnboardingNavigator({ token, initialStep, onComplete }) 
 
       {step === STEPS.IMPORT && (
         <ImportScreen
+          header={progress}
           token={token}
           selected={selectedTracks}
           onSelectedChange={setSelectedTracks}
@@ -92,6 +94,7 @@ export default function OnboardingNavigator({ token, initialStep, onComplete }) 
 
       {step === STEPS.DNA && (
         <DnaScreen
+          header={progress}
           profile={musicProfile}
           onComplete={onComplete}
           onBack={() => setStep(STEPS.IMPORT)}
@@ -102,8 +105,5 @@ export default function OnboardingNavigator({ token, initialStep, onComplete }) 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#09090b', paddingHorizontal: 24, paddingTop: 60 },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: 32 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#3f3f46' },
-  dotActive: { width: 24, backgroundColor: '#7c3aed' },
+  container: { flex: 1, backgroundColor: colors.background },
 });

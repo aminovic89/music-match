@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, FlatList,
-  StyleSheet, ActivityIndicator, Linking,
+  View, Text, Pressable, StyleSheet, ActivityIndicator, Linking,
 } from 'react-native';
+import Screen, { ScreenIntro } from '../../components/Screen';
+import Button from '../../components/Button';
+import IconButton from '../../components/IconButton';
+import TextField from '../../components/TextField';
+import Section from '../../components/Section';
+import FormAlert, { useAnnounce } from '../../components/Alert';
+import {
+  colors, radius, spacing, touch, typography, fontSize, fontWeight,
+} from '../../theme';
 
 const API = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 const MIN_TRACKS = 10;
@@ -23,7 +31,7 @@ function isDuplicate(list, track) {
   );
 }
 
-export default function ImportScreen({ token, selected, onSelectedChange, onSubmit, onBack, loading, error }) {
+export default function ImportScreen({ header, token, selected, onSelectedChange, onSubmit, onBack, loading, error }) {
   const [spotifyConnected, setSpotifyConnected] = useState(false);
   const [importingSpotify, setImportingSpotify] = useState(false);
   const [manualName, setManualName] = useState('');
@@ -125,198 +133,277 @@ export default function ImportScreen({ token, selected, onSelectedChange, onSubm
     onSubmit(selected);
   };
 
+  const missing = MIN_TRACKS - selected.length;
+  const hint = selected.length < MIN_TRACKS
+    ? (belowMinAttempted
+      ? `Il te manque ${missing} titre${missing > 1 ? 's' : ''} pour enregistrer (minimum ${MIN_TRACKS})`
+      : `Encore ${missing} titre${missing > 1 ? 's' : ''} pour continuer`)
+    : null;
+  // Le message "Il te manque…" apparaît après un appui sur Analyser : on
+  // l'annonce (il est affiché dans la barre du bas, loin du focus).
+  useAnnounce(belowMinAttempted && hint ? hint : null);
+
+  const spotifyStatus = importingSpotify
+    ? 'Importation de tes titres...'
+    : spotifyConnected
+      ? '✓ Connecté'
+      : 'Importe automatiquement tes titres les plus écoutés';
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Ta musique</Text>
-      <Text style={styles.subtitle}>
-        Choisis au moins {MIN_TRACKS} titres que tu aimes
-      </Text>
-
-      {error && <Text style={styles.error}>{error}</Text>}
-
-      {/* Connexion Spotify */}
-      <TouchableOpacity
-        style={[styles.spotifyBtn, spotifyConnected && styles.spotifyConnected]}
-        onPress={() => Linking.openURL(`${API}/api/auth/spotify?platform=mobile`)}
-      >
-        <Text style={styles.spotifyIcon}>🎵</Text>
-        <View style={styles.spotifyInfo}>
-          <Text style={styles.spotifyTitle}>Connecter Spotify</Text>
-          <Text style={styles.spotifyDesc}>
-            {importingSpotify
-              ? 'Importation de tes titres...'
-              : spotifyConnected
-                ? '✓ Connecté'
-                : 'Importe automatiquement tes titres les plus écoutés'}
-          </Text>
-        </View>
-        {spotifyConnected && <Text style={styles.checkmark}>✓</Text>}
-      </TouchableOpacity>
-
-      {/* Saisie manuelle */}
-      <Text style={styles.manualLabel}>Ou ajoute un titre manuellement</Text>
-      <View style={styles.manualRow}>
-        <TextInput
-          style={[styles.searchInput, styles.manualInput]}
-          value={manualName}
-          onChangeText={setManualName}
-          placeholder="Titre"
-          placeholderTextColor="#6b7280"
-        />
-        <TextInput
-          style={[styles.searchInput, styles.manualInput]}
-          value={manualArtist}
-          onChangeText={setManualArtist}
-          placeholder="Artiste"
-          placeholderTextColor="#6b7280"
-        />
-        <TouchableOpacity
-          style={[styles.addBtn, !manualName.trim() && styles.submitDisabled]}
-          onPress={addManualTrack}
-          disabled={!manualName.trim()}
-        >
-          <Text style={styles.addBtnText}>+</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Suggestions Deezer en direct */}
-      {manualSearching && <Text style={styles.manualLabel}>Recherche...</Text>}
-      {!manualSearching && manualSuggestions.length > 0 && (
-        <View style={styles.suggestionsBox}>
-          {manualSuggestions.map((track) => (
-            <TouchableOpacity
-              key={track.track_id}
-              style={styles.suggestionItem}
-              onPress={() => addSuggestion(track)}
+    <Screen
+      header={header}
+      footer={
+        <View style={styles.footer}>
+          {hint ? (
+            <Text
+              style={[styles.hint, belowMinAttempted && styles.hintError]}
+              accessibilityLiveRegion="polite"
             >
-              <Text style={styles.trackIcon}>🎵</Text>
-              <View style={styles.trackInfo}>
-                <Text style={styles.trackName} numberOfLines={1}>{track.track_name}</Text>
-                <Text style={styles.trackArtist} numberOfLines={1}>{track.artist_name}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {/* Titres sélectionnés */}
-      <View style={styles.selectedHeader}>
-        <Text style={styles.selectedLabel}>Titres sélectionnés</Text>
-        <Text style={[styles.counter, selected.length >= MIN_TRACKS && styles.counterOk]}>
-          {selected.length}{selected.length < MIN_TRACKS ? ` (min. ${MIN_TRACKS})` : ''}
-        </Text>
-      </View>
-      <FlatList
-        data={selected}
-        keyExtractor={(item) => item.track_id}
-        style={styles.selectedList}
-        ListEmptyComponent={<Text style={styles.emptyText}>Aucun titre pour l&apos;instant</Text>}
-        renderItem={({ item }) => (
-          <View style={[styles.trackItem, styles.trackSelected]}>
-            <Text style={styles.trackIcon}>{item.source === 'manual' ? '✏️' : '🎵'}</Text>
-            <View style={styles.trackInfo}>
-              <Text style={styles.trackName} numberOfLines={1}>{item.track_name}</Text>
-              <Text style={styles.trackArtist} numberOfLines={1}>{item.artist_name}</Text>
-            </View>
-            <TouchableOpacity onPress={() => removeTrack(item.track_id)}>
-              <Text style={styles.removeText}>✕</Text>
-            </TouchableOpacity>
+              {belowMinAttempted ? '! ' : ''}{hint}
+            </Text>
+          ) : null}
+          <View style={styles.actions}>
+            <Button title="Retour" variant="secondary" onPress={onBack} style={styles.backBtn} />
+            <Button
+              title={`Analyser (${selected.length})`}
+              onPress={handleSubmitPress}
+              loading={loading}
+              accessibilityHint={selected.length < MIN_TRACKS ? `Minimum ${MIN_TRACKS} titres` : undefined}
+              style={styles.submitBtn}
+            />
           </View>
-        )}
+        </View>
+      }
+    >
+      <ScreenIntro
+        title="Ta musique"
+        subtitle={`Choisis au moins ${MIN_TRACKS} titres que tu aimes`}
       />
 
-      {selected.length < MIN_TRACKS && (
-        <Text style={[styles.hintText, belowMinAttempted && styles.hintTextError]}>
-          {belowMinAttempted
-            ? `Il te manque ${MIN_TRACKS - selected.length} titre${MIN_TRACKS - selected.length > 1 ? 's' : ''} pour enregistrer (minimum ${MIN_TRACKS})`
-            : `Encore ${MIN_TRACKS - selected.length} titre${MIN_TRACKS - selected.length > 1 ? 's' : ''} pour continuer`}
-        </Text>
-      )}
+      <FormAlert message={error} style={styles.alert} />
 
-      {/* Actions */}
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>← Retour</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.submitBtn, loading && styles.submitDisabled]}
-          onPress={handleSubmitPress}
-          disabled={loading}
+      <View style={styles.sections}>
+        {/* Connexion Spotify */}
+        <Pressable
+          onPress={() => Linking.openURL(`${API}/api/auth/spotify?platform=mobile`)}
+          accessibilityRole="button"
+          accessibilityLabel={`Connecter Spotify. ${spotifyStatus}`}
+          accessibilityState={{ busy: importingSpotify }}
+          style={({ pressed }) => [
+            styles.spotifyCard,
+            spotifyConnected && styles.spotifyConnected,
+            pressed && styles.pressed,
+          ]}
         >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.submitText}>Analyser ({selected.length})</Text>
+          <View style={[styles.spotifyIcon, spotifyConnected && styles.spotifyIconConnected]}>
+            {importingSpotify
+              ? <ActivityIndicator size="small" color={colors.text} />
+              : <Text style={styles.spotifyGlyph}>{spotifyConnected ? '✓' : '♪'}</Text>}
+          </View>
+          <View style={styles.spotifyInfo}>
+            <Text style={styles.spotifyTitle}>Connecter Spotify</Text>
+            <Text style={[styles.spotifyDesc, spotifyConnected && styles.spotifyDescConnected]}>
+              {spotifyStatus}
+            </Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
+
+        {/* Saisie manuelle + suggestions Deezer en direct */}
+        <Section title="Ou ajoute un titre manuellement">
+          <TextField
+            label="Titre"
+            value={manualName}
+            onChangeText={setManualName}
+            placeholder="Ex. Tout oublier"
+            returnKeyType="next"
+            autoCorrect={false}
+          />
+          <TextField
+            label="Artiste"
+            value={manualArtist}
+            onChangeText={setManualArtist}
+            placeholder="Ex. Angèle"
+            returnKeyType="done"
+            autoCorrect={false}
+          />
+
+          {manualSearching && (
+            <View style={styles.searching} accessibilityLiveRegion="polite">
+              <ActivityIndicator size="small" color={colors.textMuted} />
+              <Text style={typography.caption}>Recherche...</Text>
+            </View>
+          )}
+          {!manualSearching && manualSuggestions.length > 0 && (
+            <View style={styles.list} accessibilityLabel="Suggestions">
+              {manualSuggestions.map((track) => (
+                <Pressable
+                  key={track.track_id}
+                  onPress={() => addSuggestion(track)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ajouter ${track.track_name}, ${track.artist_name}`}
+                  style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+                >
+                  <TrackGlyph glyph="♪" />
+                  <TrackInfo name={track.track_name} artist={track.artist_name} />
+                  <Text style={styles.addGlyph}>+</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          <Button
+            title="Ajouter ce titre"
+            variant="secondary"
+            onPress={addManualTrack}
+            disabled={!manualName.trim()}
+          />
+        </Section>
+
+        {/* Titres sélectionnés */}
+        <Section
+          title="Titres sélectionnés"
+          right={
+            <View
+              style={[styles.counter, selected.length >= MIN_TRACKS && styles.counterOk]}
+              accessible
+              accessibilityLabel={`${selected.length} titre${selected.length > 1 ? 's' : ''} sélectionné${selected.length > 1 ? 's' : ''}, minimum ${MIN_TRACKS}`}
+            >
+              <Text style={[styles.counterText, selected.length >= MIN_TRACKS && styles.counterTextOk]}>
+                {selected.length >= MIN_TRACKS ? '✓ ' : ''}{selected.length} / {MIN_TRACKS}
+              </Text>
+            </View>
           }
-        </TouchableOpacity>
+        >
+          {selected.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={typography.subtitle}>Aucun titre pour l&apos;instant</Text>
+            </View>
+          ) : (
+            <View style={styles.list}>
+              {selected.map((item) => (
+                <View key={item.track_id} style={[styles.row, styles.rowSelected]}>
+                  <TrackGlyph glyph={item.source === 'manual' ? '✎' : '♪'} />
+                  <TrackInfo name={item.track_name} artist={item.artist_name} />
+                  <IconButton
+                    glyph="✕"
+                    accessibilityLabel={`Retirer ${item.track_name}`}
+                    onPress={() => removeTrack(item.track_id)}
+                  />
+                </View>
+              ))}
+            </View>
+          )}
+        </Section>
       </View>
+    </Screen>
+  );
+}
+
+function TrackGlyph({ glyph }) {
+  return (
+    <View style={styles.trackGlyph} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+      <Text style={styles.trackGlyphText}>{glyph}</Text>
+    </View>
+  );
+}
+
+function TrackInfo({ name, artist }) {
+  return (
+    <View style={styles.trackInfo}>
+      <Text style={styles.trackName} numberOfLines={1}>{name}</Text>
+      {artist ? <Text style={styles.trackArtist} numberOfLines={1}>{artist}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  title: { fontSize: 24, fontWeight: '600', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#9ca3af', textAlign: 'center', marginBottom: 20 },
-  error: { color: '#f87171', textAlign: 'center', marginBottom: 12, fontSize: 13 },
-  spotifyBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 14, borderRadius: 16, borderWidth: 1,
-    borderColor: '#3f3f46', backgroundColor: '#18181b', marginBottom: 16,
+  alert: { marginBottom: spacing.lg },
+  sections: { gap: spacing.xxl },
+  pressed: { opacity: 0.8 },
+  spotifyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    minHeight: touch.control,
+    padding: spacing.lg,
+    borderRadius: radius.field + 2,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.surface,
   },
-  spotifyConnected: { borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.1)' },
-  spotifyIcon: { fontSize: 22 },
-  spotifyInfo: { flex: 1 },
-  spotifyTitle: { color: '#fff', fontSize: 14, fontWeight: '500' },
-  spotifyDesc: { color: '#9ca3af', fontSize: 12 },
-  checkmark: { color: '#4ade80', fontWeight: '600' },
-  searchInput: {
-    flex: 1, backgroundColor: '#18181b', borderWidth: 1,
-    borderColor: '#3f3f46', borderRadius: 12, paddingHorizontal: 14,
-    paddingVertical: 11, color: '#fff', fontSize: 14,
+  spotifyConnected: { borderColor: colors.successLine, backgroundColor: colors.successBg },
+  spotifyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  manualLabel: { color: '#6b7280', fontSize: 11, marginBottom: 6 },
-  manualRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  manualInput: { flex: 1, marginBottom: 0 },
-  addBtn: {
-    paddingHorizontal: 16, borderRadius: 12, backgroundColor: '#27272a',
-    borderWidth: 1, borderColor: '#3f3f46', alignItems: 'center', justifyContent: 'center',
+  spotifyIconConnected: { backgroundColor: 'rgba(110, 231, 183, 0.18)' },
+  spotifyGlyph: { color: colors.text, fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
+  spotifyInfo: { flex: 1, gap: 2 },
+  spotifyTitle: { color: colors.text, fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  spotifyDesc: { color: colors.textMuted, fontSize: fontSize.sm, lineHeight: 20 },
+  spotifyDescConnected: { color: colors.success, fontWeight: fontWeight.medium },
+  chevron: { color: colors.textMuted, fontSize: 26 },
+  searching: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  list: { gap: spacing.sm },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    minHeight: touch.control + 8,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.xs,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.field,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
   },
-  addBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  suggestionsBox: { marginBottom: 12, maxHeight: 140 },
-  suggestionItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    padding: 10, borderRadius: 10, borderWidth: 1,
-    borderColor: '#27272a', marginBottom: 6,
+  rowSelected: { borderColor: colors.accentLine },
+  trackGlyph: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  selectedHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  selectedLabel: { color: '#9ca3af', fontSize: 12 },
-  counter: { color: '#9ca3af', fontSize: 12 },
-  counterOk: { color: '#4ade80' },
-  emptyText: { color: '#4b5563', fontSize: 12, fontStyle: 'italic' },
-  selectedList: { flex: 1, marginBottom: 8 },
-  hintText: { color: '#6b7280', fontSize: 12, textAlign: 'center', marginBottom: 12 },
-  hintTextError: { color: '#f87171', fontWeight: '600' },
-  trackItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    padding: 12, borderRadius: 10, borderWidth: 1,
-    borderColor: '#27272a', marginBottom: 6,
+  trackGlyphText: { color: colors.accentText, fontSize: fontSize.base },
+  trackInfo: { flex: 1, minWidth: 0 },
+  trackName: { color: colors.text, fontSize: fontSize.sm, fontWeight: fontWeight.medium, lineHeight: 20 },
+  trackArtist: { color: colors.textMuted, fontSize: fontSize.xs, lineHeight: 16 },
+  addGlyph: {
+    color: colors.accentText,
+    fontSize: fontSize.lg,
+    minWidth: touch.min,
+    textAlign: 'center',
   },
-  trackSelected: { borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.1)' },
-  trackIcon: { fontSize: 16 },
-  trackInfo: { flex: 1 },
-  trackName: { color: '#fff', fontSize: 13, fontWeight: '500' },
-  trackArtist: { color: '#9ca3af', fontSize: 12 },
-  removeText: { color: '#6b7280', fontSize: 14, paddingHorizontal: 4 },
-  actions: { flexDirection: 'row', gap: 12 },
-  backBtn: {
-    flex: 1, paddingVertical: 14, borderRadius: 16,
-    borderWidth: 1, borderColor: '#3f3f46', alignItems: 'center',
+  counter: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 2,
   },
-  backText: { color: '#d1d5db', fontSize: 14 },
-  submitBtn: {
-    flex: 2, paddingVertical: 14, borderRadius: 16,
-    backgroundColor: '#7c3aed', alignItems: 'center',
+  counterOk: { borderColor: colors.successLine, backgroundColor: colors.successBg },
+  counterText: { color: colors.textMuted, fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
+  counterTextOk: { color: colors.success },
+  empty: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.lineStrong,
+    borderRadius: radius.field,
+    padding: spacing.lg,
+    alignItems: 'center',
   },
-  submitDisabled: { opacity: 0.4 },
-  submitText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  footer: { gap: spacing.sm },
+  hint: { color: colors.textMuted, fontSize: fontSize.xs, lineHeight: 16, textAlign: 'center' },
+  hintError: { color: colors.danger, fontWeight: fontWeight.semibold },
+  actions: { flexDirection: 'row', gap: spacing.md },
+  backBtn: { flex: 1, paddingHorizontal: spacing.md },
+  submitBtn: { flex: 2, paddingHorizontal: spacing.md },
 });

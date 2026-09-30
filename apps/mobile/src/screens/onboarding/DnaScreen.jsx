@@ -1,7 +1,14 @@
 import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import Screen, { ScreenIntro } from '../../components/Screen';
+import Button from '../../components/Button';
+import Card from '../../components/Card';
+import Chip from '../../components/Chip';
+import Section from '../../components/Section';
+import { LogoMark } from '../../components/Logo';
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet,
-} from 'react-native';
+  colors, accentGradient, radius, spacing, typography, fontSize, fontWeight,
+} from '../../theme';
 
 const MOODS_LABELS = {
   energetic: { label: 'Énergique', emoji: '⚡' },
@@ -34,145 +41,134 @@ function tempoLabel(bpm) {
   return 'tempo modéré';
 }
 
+// Barre de métrique : libellé + valeur sur une ligne (retour à la ligne
+// possible avec une grande police), barre pleine largeur dessous, légende
+// en texte. Plus de largeurs fixes qui tronquaient les valeurs.
 function MetricBar({ label, value, caption }) {
   const pct = Math.round((value || 0) * 100);
   return (
-    <View>
+    <View
+      style={styles.metric}
+      accessible
+      accessibilityLabel={`${label} : ${pct} sur 100${caption ? `, ${caption}` : ''}`}
+    >
       <View style={styles.metricRow}>
         <Text style={styles.metricLabel}>{label}</Text>
-        <View style={styles.barBg}>
-          <View style={[styles.barFill, { width: `${pct}%` }]} />
-        </View>
         <Text style={styles.metricValue}>{pct}</Text>
+      </View>
+      <View style={styles.barBg}>
+        <View style={[styles.barFill, accentGradient, { width: `${pct}%` }]} />
       </View>
       {caption && <Text style={styles.metricCaption}>{caption}</Text>}
     </View>
   );
 }
 
-export default function DnaScreen({ profile, onComplete, onBack }) {
+export default function DnaScreen({ header, profile, onComplete, onBack }) {
   if (!profile) {
     return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyIcon}>🎵</Text>
-        <Text style={styles.emptyText}>Profil musical non disponible</Text>
-        <TouchableOpacity onPress={onBack}>
-          <Text style={styles.linkText}>Retour</Text>
-        </TouchableOpacity>
-      </View>
+      <Screen header={header} center>
+        <View style={styles.emptyBox}>
+          <LogoMark size={56} />
+          <Text style={[typography.title, styles.emptyTitle]} accessibilityRole="header">
+            Profil musical non disponible
+          </Text>
+          <Button title="Retour" variant="secondary" onPress={onBack} style={styles.emptyBtn} />
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <Text style={styles.title}>Ton ADN musical 🎵</Text>
-      <Text style={styles.subtitle}>Voilà ce qu'on a trouvé à partir de tes titres</Text>
-
-      {/* Métriques audio — seulement si on a de vraies audio features
-          (titres importés via Spotify) ; les titres Deezer/manuels n'en ont pas. */}
-      {profile.avg_energy != null && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>AUDIO</Text>
-          <MetricBar
-            label="Énergie"
-            value={profile.avg_energy}
-            caption={energyLabel(Math.round(profile.avg_energy * 100))}
-          />
-          <MetricBar
-            label="Positivité"
-            value={profile.avg_valence}
-            caption={valenceLabel(Math.round(profile.avg_valence * 100))}
-          />
-          <View>
-            <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>BPM moy.</Text>
-              <View style={styles.barBg} />
-              <Text style={styles.metricValueBold}>{Math.round(profile.avg_tempo)}</Text>
-            </View>
-            <Text style={styles.metricCaption}>{tempoLabel(Math.round(profile.avg_tempo))}</Text>
-          </View>
+    <Screen
+      header={header}
+      footer={
+        <View style={styles.footer}>
+          <Button title="Voir mes matchs" onPress={onComplete} />
+          <Button title="Modifier mes titres" variant="ghost" onPress={onBack} />
         </View>
-      )}
+      }
+    >
+      <ScreenIntro
+        title="Ton ADN musical"
+        subtitle="Voilà ce qu'on a trouvé à partir de tes titres"
+      />
 
-      {/* Artistes */}
-      {profile.top_artists?.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>ARTISTES DOMINANTS</Text>
-          <View style={styles.tags}>
-            {profile.top_artists.map((artist) => (
-              <View key={artist} style={styles.tagPurple}>
-                <Text style={styles.tagPurpleText}>{artist}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Moods */}
-      {profile.top_moods?.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>TES MOODS</Text>
-          <View style={styles.tags}>
-            {profile.top_moods.map((mood) => {
-              const info = MOODS_LABELS[mood] || { label: mood, emoji: '🎵' };
-              return (
-                <View key={mood} style={styles.tagGreen}>
-                  <Text style={styles.tagGreenText}>{info.emoji} {info.label}</Text>
+      <View style={styles.cards}>
+        {/* Métriques audio — seulement si on a de vraies audio features
+            (titres importés via Spotify) ; les titres Deezer/manuels n'en ont pas. */}
+        {profile.avg_energy != null && (
+          <Card compact>
+            <Section title="Audio">
+              <MetricBar
+                label="Énergie"
+                value={profile.avg_energy}
+                caption={energyLabel(Math.round(profile.avg_energy * 100))}
+              />
+              <MetricBar
+                label="Positivité"
+                value={profile.avg_valence}
+                caption={valenceLabel(Math.round(profile.avg_valence * 100))}
+              />
+              <View
+                style={styles.metric}
+                accessible
+                accessibilityLabel={`BPM moyen : ${Math.round(profile.avg_tempo)}, ${tempoLabel(Math.round(profile.avg_tempo))}`}
+              >
+                <View style={styles.metricRow}>
+                  <Text style={styles.metricLabel}>BPM moy.</Text>
+                  <Text style={styles.metricValueStrong}>{Math.round(profile.avg_tempo)}</Text>
                 </View>
-              );
-            })}
-          </View>
-        </View>
-      )}
+                <Text style={styles.metricCaption}>{tempoLabel(Math.round(profile.avg_tempo))}</Text>
+              </View>
+            </Section>
+          </Card>
+        )}
 
-      <TouchableOpacity style={styles.btn} onPress={onComplete}>
-        <Text style={styles.btnText}>Voir mes matchs →</Text>
-      </TouchableOpacity>
+        {/* Artistes */}
+        {profile.top_artists?.length > 0 && (
+          <Card compact>
+            <Section title="Artistes dominants">
+              <View style={styles.tags}>
+                {profile.top_artists.map((artist) => (
+                  <Chip key={artist} label={artist} tone="accent" />
+                ))}
+              </View>
+            </Section>
+          </Card>
+        )}
 
-      <TouchableOpacity style={styles.backLink} onPress={onBack}>
-        <Text style={styles.linkText}>← Modifier mes titres</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* Moods */}
+        {profile.top_moods?.length > 0 && (
+          <Card compact>
+            <Section title="Tes moods">
+              <View style={styles.tags}>
+                {profile.top_moods.map((mood) => {
+                  const info = MOODS_LABELS[mood] || { label: mood, emoji: '🎵' };
+                  return <Chip key={mood} label={`${info.emoji} ${info.label}`} tone="accent2" />;
+                })}
+              </View>
+            </Section>
+          </Card>
+        )}
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyText: { color: '#9ca3af', marginBottom: 16 },
-  title: { fontSize: 24, fontWeight: '600', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#9ca3af', textAlign: 'center', marginBottom: 24 },
-  card: {
-    backgroundColor: '#18181b', borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: '#27272a', marginBottom: 12,
-  },
-  cardTitle: { color: '#6b7280', fontSize: 11, letterSpacing: 1, marginBottom: 12 },
-  metricRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  metricLabel: { color: '#9ca3af', fontSize: 12, width: 70 },
-  barBg: { flex: 1, height: 6, backgroundColor: '#27272a', borderRadius: 3, overflow: 'hidden' },
-  barFill: { height: 6, backgroundColor: '#7c3aed', borderRadius: 3 },
-  metricValue: { color: '#9ca3af', fontSize: 12, width: 24, textAlign: 'right' },
-  metricValueBold: { color: '#fff', fontSize: 14, fontWeight: '500', width: 24, textAlign: 'right' },
-  metricCaption: { color: '#6b7280', fontSize: 11, marginLeft: 80, marginTop: -4, marginBottom: 10 },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tagPurple: {
-    paddingHorizontal: 12, paddingVertical: 6,
-    backgroundColor: 'rgba(124,58,237,0.15)',
-    borderRadius: 20, borderWidth: 1, borderColor: 'rgba(124,58,237,0.3)',
-  },
-  tagPurpleText: { color: '#c4b5fd', fontSize: 12 },
-  tagGreen: {
-    paddingHorizontal: 12, paddingVertical: 6,
-    backgroundColor: 'rgba(16,185,129,0.15)',
-    borderRadius: 20, borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)',
-  },
-  tagGreenText: { color: '#6ee7b7', fontSize: 12 },
-  btn: {
-    backgroundColor: '#7c3aed', borderRadius: 16,
-    paddingVertical: 14, alignItems: 'center', marginBottom: 12,
-  },
-  btnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  backLink: { alignItems: 'center', paddingBottom: 32 },
-  linkText: { color: '#6b7280', fontSize: 13 },
+  cards: { gap: spacing.md },
+  metric: { gap: 6 },
+  metricRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: spacing.sm },
+  metricLabel: { color: colors.text, fontSize: fontSize.sm, fontWeight: fontWeight.medium },
+  metricValue: { color: colors.textMuted, fontSize: fontSize.sm, fontVariant: ['tabular-nums'] },
+  metricValueStrong: { color: colors.text, fontSize: fontSize.base, fontWeight: fontWeight.semibold, fontVariant: ['tabular-nums'] },
+  barBg: { height: 8, backgroundColor: colors.surface2, borderRadius: radius.pill, overflow: 'hidden' },
+  barFill: { height: 8, borderRadius: radius.pill },
+  metricCaption: { color: colors.textMuted, fontSize: fontSize.xs, lineHeight: 16 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  footer: { gap: spacing.xs },
+  emptyBox: { alignItems: 'center', gap: spacing.lg, paddingHorizontal: spacing.lg },
+  emptyTitle: { textAlign: 'center', fontSize: fontSize.xl },
+  emptyBtn: { alignSelf: 'stretch' },
 });

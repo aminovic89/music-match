@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { apiClient } from '@music-match/shared';
 import ImportScreen from './onboarding/ImportScreen';
 import DnaScreen from './onboarding/DnaScreen';
+import Screen, { ScreenHeader } from '../components/Screen';
+import { colors, spacing, typography } from '../theme';
 
 const STEPS = { IMPORT: 0, DNA: 1 };
 
@@ -44,11 +46,18 @@ export default function MusicEditScreen({ token, onBack }) {
     }
   };
 
+  // En-tête commun aux deux étapes : l'utilisateur sait qu'il modifie sa
+  // musique (et non qu'il refait l'onboarding) et peut revenir à l'accueil.
+  const header = <ScreenHeader title="Modifier ma musique" onBack={onBack} />;
+
   if (!ready) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator color="#7c3aed" size="large" />
-      </View>
+      <Screen header={header} center scroll={false}>
+        <View style={styles.loading} accessible accessibilityLabel="Chargement de ta musique">
+          <ActivityIndicator color={colors.accentText} size="large" />
+          <Text style={typography.subtitle}>Chargement de ta musique…</Text>
+        </View>
+      </Screen>
     );
   }
 
@@ -56,6 +65,7 @@ export default function MusicEditScreen({ token, onBack }) {
     <View style={styles.container}>
       {step === STEPS.IMPORT && (
         <ImportScreen
+          header={header}
           token={token}
           selected={selectedTracks}
           onSelectedChange={setSelectedTracks}
@@ -68,6 +78,7 @@ export default function MusicEditScreen({ token, onBack }) {
 
       {step === STEPS.DNA && (
         <DnaScreen
+          header={header}
           profile={musicProfile}
           onComplete={onBack}
           onBack={() => setStep(STEPS.IMPORT)}
@@ -78,6 +89,6 @@ export default function MusicEditScreen({ token, onBack }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#09090b', paddingHorizontal: 24, paddingTop: 60 },
-  loading: { flex: 1, backgroundColor: '#09090b', alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: colors.background },
+  loading: { alignItems: 'center', gap: spacing.md },
 });

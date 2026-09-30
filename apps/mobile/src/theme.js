@@ -28,6 +28,11 @@ export const colors = {
   accentText: '#b69cff',
   accent2Text: '#f0abfc',
   focus: '#c4b5fd',
+  // Teintes douces pour sélection / chips (web : bg-accent/15, border-accent/40)
+  accentSoft: 'rgba(124, 58, 237, 0.15)',
+  accentLine: 'rgba(182, 156, 255, 0.45)',
+  accent2Soft: 'rgba(192, 38, 211, 0.15)',
+  accent2Line: 'rgba(240, 171, 252, 0.4)',
 
   danger: '#fca5a5',
   dangerBg: 'rgba(127, 29, 29, 0.28)',
