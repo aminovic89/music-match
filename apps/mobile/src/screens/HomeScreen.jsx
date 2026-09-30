@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import Screen from '../components/Screen';
+import Button from '../components/Button';
+import Card from '../components/Card';
+import Section from '../components/Section';
+import ListRow from '../components/ListRow';
+import Avatar from '../components/Avatar';
+import Logo, { LogoMark } from '../components/Logo';
+import FormAlert from '../components/Alert';
+import { colors, spacing, fontSize, fontWeight, lineHeight, typography } from '../theme';
 import { apiClient } from '@music-match/shared';
 
 export default function HomeScreen({ onLogout, onNavigateProfile, onNavigateMusic }) {
@@ -13,41 +22,76 @@ export default function HomeScreen({ onLogout, onNavigateProfile, onNavigateMusi
   }, []);
 
   return (
-    <View style={styles.container}>
-      {error && <Text style={styles.error}>{error}</Text>}
+    <Screen header={<View style={styles.brand}><Logo /></View>}>
+      <FormAlert message={error} style={styles.alert} />
 
-      <Text style={styles.emoji}>🎉</Text>
-      <Text style={styles.title}>
-        {user ? `Salut ${user.first_name} !` : 'Bienvenue'}
-      </Text>
-      <Text style={styles.subtitle}>Ton profil est prêt.</Text>
+      {/* Salutation */}
+      <View style={styles.greeting}>
+        <Avatar avatarUrl={user?.avatar_url} firstName={user?.first_name} size={56} />
+        <View style={styles.greetingText}>
+          <Text style={styles.hello} accessibilityRole="header">
+            {user ? `Salut ${user.first_name} !` : 'Bienvenue'}
+          </Text>
+          <Text style={typography.subtitle}>Content de te revoir.</Text>
+        </View>
+      </View>
 
-      <TouchableOpacity onPress={onNavigateProfile} style={styles.profileBtn}>
-        <Text style={styles.profileText}>⚙️ Mon profil</Text>
-      </TouchableOpacity>
+      <View style={styles.sections}>
+        {/* Statut : la découverte et les matchs n'existent que sur le web
+            (apps/web/app/(app)/discover et /matches) ; pas de lien profond
+            vers le web dans l'appli, donc simple note non interactive. */}
+        <Card compact style={styles.status}>
+          <LogoMark size={40} />
+          <View style={styles.statusText}>
+            <Text style={styles.statusTitle}>Tes matchs sont sur le web</Text>
+            <Text style={typography.subtitle}>
+              {"Pour l'instant, la découverte de profils et tes matchs se trouvent sur la version web de Music Match."}
+            </Text>
+          </View>
+        </Card>
 
-      <TouchableOpacity onPress={onNavigateMusic} style={styles.profileBtn}>
-        <Text style={styles.profileText}>🎵 Ma musique</Text>
-      </TouchableOpacity>
+        <Section title="Ton compte">
+          <View style={styles.rows}>
+            <ListRow
+              icon="✎"
+              title="Mon profil"
+              description="Prénom, âge, ville et ce que tu recherches"
+              onPress={onNavigateProfile}
+            />
+            <ListRow
+              icon="♪"
+              title="Ma musique"
+              description="Tes titres et ton ADN musical"
+              onPress={onNavigateMusic}
+            />
+          </View>
+        </Section>
+      </View>
 
-      <TouchableOpacity onPress={onLogout} style={styles.logoutBtn}>
-        <Text style={styles.logoutText}>Se déconnecter</Text>
-      </TouchableOpacity>
-    </View>
+      {/* Déconnexion : volontairement discrète, en bas du contenu. */}
+      <View style={styles.logout}>
+        <Button title="Se déconnecter" variant="ghost" onPress={onLogout} />
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#09090b', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  error: { color: '#f87171', textAlign: 'center', marginBottom: 12, fontSize: 13 },
-  emoji: { fontSize: 40, marginBottom: 12 },
-  title: { fontSize: 22, fontWeight: '600', color: '#fff', textAlign: 'center', marginBottom: 6 },
-  subtitle: { fontSize: 14, color: '#9ca3af', textAlign: 'center', marginBottom: 32 },
-  profileBtn: {
-    paddingVertical: 12, paddingHorizontal: 24, borderRadius: 16,
-    borderWidth: 1, borderColor: '#3f3f46', marginBottom: 12,
+  brand: { paddingVertical: spacing.sm },
+  alert: { marginBottom: spacing.lg },
+  greeting: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, marginBottom: spacing.xl },
+  greetingText: { flex: 1, gap: spacing.xs },
+  hello: {
+    color: colors.text,
+    fontSize: fontSize['2xl'],
+    lineHeight: lineHeight['2xl'],
+    fontWeight: fontWeight.semibold,
+    letterSpacing: -0.4,
   },
-  profileText: { color: '#d1d5db', fontSize: 14 },
-  logoutBtn: { paddingVertical: 10, paddingHorizontal: 16 },
-  logoutText: { color: '#6b7280', fontSize: 13 },
+  sections: { gap: spacing.xxl },
+  status: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.lg },
+  statusText: { flex: 1, gap: spacing.xs },
+  statusTitle: { color: colors.text, fontSize: fontSize.base, lineHeight: lineHeight.base, fontWeight: fontWeight.semibold },
+  rows: { gap: spacing.sm },
+  logout: { marginTop: 'auto', paddingTop: spacing.xxl, alignItems: 'center' },
 });
