@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import Screen from '../components/Screen';
+import Button from '../components/Button';
+import TextField from '../components/TextField';
+import Section from '../components/Section';
+import FormAlert from '../components/Alert';
+import { RadioGroup, RadioCard, RadioChip } from '../components/Choice';
+import { colors, spacing, fontSize, typography } from '../theme';
 import { apiClient } from '@music-match/shared';
 
 const INTENTS = [
@@ -59,147 +64,133 @@ export default function ProfileScreen({ onBack }) {
 
   if (!form) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator color="#7c3aed" size="large" />
-        {error && <Text style={styles.error}>{error}</Text>}
-      </View>
+      <Screen title="Mon profil" onBack={onBack} center>
+        {error ? (
+          <FormAlert message={error} style={styles.loadingAlert} />
+        ) : (
+          <View style={styles.loading} accessible accessibilityLabel="Chargement du profil">
+            <ActivityIndicator color={colors.accentText} size="large" />
+            <Text style={typography.subtitle}>Chargement du profil…</Text>
+          </View>
+        )}
+      </Screen>
     );
   }
 
+  const missingRequired = !form.first_name.trim() || !form.age;
+  const saveDisabled = loading || missingRequired;
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Mon profil</Text>
-      <Text style={styles.subtitle}>Modifie tes informations à tout moment</Text>
-
-      {error && <Text style={styles.error}>{error}</Text>}
-      {success && <Text style={styles.success}>Profil mis à jour ✓</Text>}
-
-      <TextInput
-        style={styles.input}
-        value={form.first_name}
-        onChangeText={(v) => setForm({ ...form, first_name: v })}
-        placeholder="Prénom"
-        placeholderTextColor="#6b7280"
-      />
-      <TextInput
-        style={styles.input}
-        value={form.age}
-        onChangeText={(v) => setForm({ ...form, age: v })}
-        placeholder="Âge"
-        placeholderTextColor="#6b7280"
-        keyboardType="number-pad"
-      />
-      <TextInput
-        style={styles.input}
-        value={form.city}
-        onChangeText={(v) => setForm({ ...form, city: v })}
-        placeholder="Ville"
-        placeholderTextColor="#6b7280"
-      />
-
-      <Text style={styles.sectionLabel}>Je cherche</Text>
-      <View style={styles.cards}>
-        {INTENTS.map((intent) => (
-          <TouchableOpacity
-            key={intent.id}
-            style={[styles.intentCard, form.intent === intent.id && styles.cardSelected]}
-            onPress={() => setForm({ ...form, intent: intent.id })}
-          >
-            <Text style={styles.intentIcon}>{intent.icon}</Text>
-            <Text style={styles.intentLabel}>{intent.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.sectionLabel}>Genre</Text>
-      <View style={styles.pillRow}>
-        {GENDERS.map((g) => (
-          <TouchableOpacity
-            key={g.id}
-            style={[styles.pill, form.gender === g.id && styles.cardSelected]}
-            onPress={() => setForm({ ...form, gender: form.gender === g.id ? null : g.id })}
-          >
-            <Text style={[styles.pillText, form.gender === g.id && styles.pillTextSelected]}>
-              {g.label}
+    <Screen
+      title="Mon profil"
+      footer={
+        <View style={styles.footer}>
+          <FormAlert message={error} />
+          <FormAlert tone="success" message={success ? 'Profil mis à jour' : null} />
+          {missingRequired && !loading ? (
+            <Text style={styles.disabledReason} accessibilityLiveRegion="polite">
+              Renseigne ton prénom et ton âge pour enregistrer.
             </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+          ) : null}
+          <View style={styles.actions}>
+            <Button title="Retour" variant="secondary" onPress={onBack} style={styles.backBtn} />
+            <Button
+              title={loading ? 'Enregistrement...' : 'Enregistrer'}
+              onPress={handleSave}
+              loading={loading}
+              disabled={saveDisabled}
+              accessibilityHint={missingRequired ? 'Renseigne ton prénom et ton âge pour enregistrer' : undefined}
+              style={styles.submitBtn}
+            />
+          </View>
+        </View>
+      }
+    >
+      <Text style={[typography.subtitle, styles.intro]}>Modifie tes informations à tout moment</Text>
 
-      <Text style={styles.sectionLabel}>Je recherche</Text>
-      <View style={styles.pillRow}>
-        {GENDERS.map((g) => (
-          <TouchableOpacity
-            key={g.id}
-            style={[styles.pill, form.looking_for === g.id && styles.cardSelected]}
-            onPress={() => setForm({ ...form, looking_for: form.looking_for === g.id ? null : g.id })}
-          >
-            <Text style={[styles.pillText, form.looking_for === g.id && styles.pillTextSelected]}>
-              {g.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <View style={styles.sections}>
+        <Section title="Informations">
+          <TextField
+            label="Prénom"
+            value={form.first_name}
+            onChangeText={(v) => setForm({ ...form, first_name: v })}
+            autoComplete="given-name"
+            textContentType="givenName"
+            autoCapitalize="words"
+            error={!form.first_name.trim() ? 'Obligatoire' : undefined}
+          />
+          <TextField
+            label="Âge"
+            value={form.age}
+            onChangeText={(v) => setForm({ ...form, age: v })}
+            keyboardType="number-pad"
+            error={!form.age ? 'Obligatoire' : undefined}
+          />
+          <TextField
+            label="Ville"
+            value={form.city}
+            onChangeText={(v) => setForm({ ...form, city: v })}
+            autoComplete="postal-address-locality"
+            textContentType="addressCity"
+          />
+        </Section>
 
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>← Retour</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.submitBtn, (loading || !form.first_name.trim() || !form.age) && styles.submitDisabled]}
-          onPress={handleSave}
-          disabled={loading || !form.first_name.trim() || !form.age}
-        >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.submitText}>Enregistrer</Text>
-          }
-        </TouchableOpacity>
+        <Section title="Je cherche">
+          <RadioGroup label="Je cherche" style={styles.cards}>
+            {INTENTS.map((intent) => (
+              <RadioCard
+                key={intent.id}
+                title={intent.label}
+                icon={intent.icon}
+                selected={form.intent === intent.id}
+                onPress={() => setForm({ ...form, intent: intent.id })}
+              />
+            ))}
+          </RadioGroup>
+        </Section>
+
+        <Section title="Genre">
+          <RadioGroup label="Genre" style={styles.pillRow}>
+            {GENDERS.map((g) => (
+              <RadioChip
+                key={g.id}
+                label={g.label}
+                selected={form.gender === g.id}
+                accessibilityHint={form.gender === g.id ? 'Touche à nouveau pour désélectionner' : undefined}
+                onPress={() => setForm({ ...form, gender: form.gender === g.id ? null : g.id })}
+              />
+            ))}
+          </RadioGroup>
+        </Section>
+
+        <Section title="Je recherche">
+          <RadioGroup label="Je recherche" style={styles.pillRow}>
+            {GENDERS.map((g) => (
+              <RadioChip
+                key={g.id}
+                label={g.label}
+                selected={form.looking_for === g.id}
+                accessibilityHint={form.looking_for === g.id ? 'Touche à nouveau pour désélectionner' : undefined}
+                onPress={() => setForm({ ...form, looking_for: form.looking_for === g.id ? null : g.id })}
+              />
+            ))}
+          </RadioGroup>
+        </Section>
       </View>
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#09090b' },
-  content: { padding: 24, paddingTop: 60 },
-  loading: { flex: 1, backgroundColor: '#09090b', alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: '600', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#9ca3af', textAlign: 'center', marginBottom: 20 },
-  error: { color: '#f87171', textAlign: 'center', marginBottom: 12, fontSize: 13 },
-  success: { color: '#4ade80', textAlign: 'center', marginBottom: 12, fontSize: 13 },
-  input: {
-    backgroundColor: '#18181b', borderWidth: 1, borderColor: '#3f3f46',
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
-    color: '#fff', fontSize: 14, marginBottom: 12,
-  },
-  sectionLabel: { color: '#6b7280', fontSize: 12, marginBottom: 8, marginTop: 4 },
-  cards: { gap: 10, marginBottom: 16 },
-  intentCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    padding: 14, borderRadius: 14, borderWidth: 1,
-    borderColor: '#3f3f46', backgroundColor: '#18181b',
-  },
-  intentIcon: { fontSize: 18 },
-  intentLabel: { color: '#fff', fontSize: 14 },
-  cardSelected: { borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.1)' },
-  pillRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  pill: {
-    flex: 1, paddingVertical: 10, borderRadius: 12,
-    borderWidth: 1, borderColor: '#3f3f46', alignItems: 'center',
-  },
-  pillText: { color: '#9ca3af', fontSize: 13 },
-  pillTextSelected: { color: '#fff' },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  backBtn: {
-    flex: 1, paddingVertical: 14, borderRadius: 16,
-    borderWidth: 1, borderColor: '#3f3f46', alignItems: 'center',
-  },
-  backText: { color: '#d1d5db', fontSize: 14 },
-  submitBtn: {
-    flex: 2, paddingVertical: 14, borderRadius: 16,
-    backgroundColor: '#7c3aed', alignItems: 'center',
-  },
-  submitDisabled: { opacity: 0.4 },
-  submitText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  loading: { alignItems: 'center', gap: spacing.md },
+  loadingAlert: { alignSelf: 'stretch' },
+  intro: { marginBottom: spacing.xl },
+  sections: { gap: spacing.xxl },
+  cards: { gap: spacing.md },
+  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  footer: { gap: spacing.sm },
+  disabledReason: { color: colors.textMuted, fontSize: fontSize.xs, lineHeight: 16, textAlign: 'center' },
+  actions: { flexDirection: 'row', gap: spacing.md },
+  backBtn: { flex: 1, paddingHorizontal: spacing.md },
+  submitBtn: { flex: 2, paddingHorizontal: spacing.md },
 });

@@ -4,6 +4,7 @@ import { View, ActivityIndicator, StyleSheet, Linking } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { apiClient } from '@music-match/shared';
+import { colors } from './src/theme';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -95,7 +96,7 @@ export default function App() {
   if (screen === 'loading') {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color="#7c3aed" size="large" />
+        <ActivityIndicator color={colors.accentText} size="large" />
       </View>
     );
   }
@@ -138,5 +139,5 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  loading: { flex: 1, backgroundColor: '#09090b', alignItems: 'center', justifyContent: 'center' },
+  loading: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
 });
