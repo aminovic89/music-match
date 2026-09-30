@@ -1,14 +1,26 @@
 // Marque Music Match : pastille dégradée (égaliseur) + wordmark.
-export function LogoMark({ className = 'size-10' }) {
+const BARS = [
+  { h: 'h-[30%]', tone: 'bg-white/90', delay: '0ms' },
+  { h: 'h-[55%]', tone: 'bg-white', delay: '-300ms' },
+  { h: 'h-[40%]', tone: 'bg-white/90', delay: '-600ms' },
+  { h: 'h-[65%]', tone: 'bg-white', delay: '-900ms' },
+];
+
+// `animated` : barres d'égaliseur animées (écran de chargement), coupées
+// si l'utilisateur demande moins d'animations.
+export function LogoMark({ className = 'size-10', animated = false }) {
   return (
     <span
       aria-hidden="true"
       className={`inline-flex items-center justify-center gap-[3px] rounded-xl bg-linear-to-br from-accent to-accent-2 shadow-glow ${className}`}
     >
-      <span className="h-[30%] w-[7%] rounded-full bg-white/90" />
-      <span className="h-[55%] w-[7%] rounded-full bg-white" />
-      <span className="h-[40%] w-[7%] rounded-full bg-white/90" />
-      <span className="h-[65%] w-[7%] rounded-full bg-white" />
+      {BARS.map((bar, i) => (
+        <span
+          key={i}
+          className={`${bar.h} w-[7%] rounded-full ${bar.tone} ${animated ? 'motion-safe:animate-eq' : ''}`}
+          style={animated ? { animationDelay: bar.delay } : undefined}
+        />
+      ))}
     </span>
   );
 }

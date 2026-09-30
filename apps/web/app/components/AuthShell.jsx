@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Card from './Card';
 import Logo from './Logo';
+import BackgroundGlow from './BackgroundGlow';
 import { focusRing } from './Button';
 
 // Coquille commune des écrans d'authentification (login, register,
@@ -10,10 +11,7 @@ import { focusRing } from './Button';
 export default function AuthShell({ title, subtitle, children, footer }) {
   return (
     <div className="relative isolate flex min-h-dvh flex-1 flex-col overflow-hidden bg-background px-4 py-8 sm:py-12">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-40 left-1/2 size-[36rem] -translate-x-1/2 rounded-full bg-accent/25 blur-3xl" />
-        <div className="absolute -bottom-48 -right-32 size-[28rem] rounded-full bg-accent-2/15 blur-3xl" />
-      </div>
+      <BackgroundGlow />
 
       <header className="flex justify-center">
         <Link href="/" aria-label="Music Match — accueil" className={`rounded-xl p-1 ${focusRing}`}>

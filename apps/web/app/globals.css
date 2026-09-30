@@ -38,6 +38,7 @@
   --color-accent-2: #c026d3;
   --color-accent-hover: #6d28d9;
   --color-accent-text: #b69cff;
+  --color-accent-2-text: #f0abfc;
   --color-focus: #c4b5fd;
 
   --color-danger: #fca5a5;
@@ -53,6 +54,20 @@
   --shadow-card: 0 1px 0 0 rgb(255 255 255 / 0.04) inset,
     0 24px 48px -16px rgb(0 0 0 / 0.6);
   --shadow-glow: 0 8px 24px -8px rgb(124 58 237 / 0.6);
+
+  /* Barres d'égaliseur (logo, illustrations). Toujours utilisé derrière
+     motion-safe: pour respecter prefers-reduced-motion. */
+  --animate-eq: eq 1.1s ease-in-out infinite;
+
+  @keyframes eq {
+    0%,
+    100% {
+      transform: scaleY(1);
+    }
+    50% {
+      transform: scaleY(0.45);
+    }
+  }
 }
 
 /* <html> aussi : le rebond élastique du scroll mobile (haut/bas) peut
