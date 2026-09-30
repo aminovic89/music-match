@@ -5,8 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import IntentStep from '@/components/onboarding/IntentStep';
 import ImportStep from '@/components/onboarding/ImportStep';
 import DnaStep from '@/components/onboarding/DnaStep';
+import BackgroundGlow from '@/components/BackgroundGlow';
+import Logo from '@/components/Logo';
+import StepProgress from '@/components/StepProgress';
+import FormAlert from '@/components/Alert';
 
 const STEPS = { INTENT: 0, IMPORT: 1, DNA: 2 };
+// Libellés affichés à côté de "Étape n sur 3" (identiques au mobile).
+const STEP_LABELS = ['Ton intention', 'Ta musique', 'Ton ADN musical'];
 
 function OnboardingContent() {
   const router = useRouter();
@@ -70,24 +76,19 @@ function OnboardingContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center gap-2 mb-8">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                i === step ? 'w-6 bg-violet-500' : 'w-2 bg-gray-700'
-              }`}
-            />
-          ))}
+    // overflow-x-clip (pas hidden) : les barres d'actions des étapes sont
+    // en position: sticky.
+    <div className="relative isolate flex min-h-dvh flex-1 flex-col overflow-x-clip bg-background">
+      <BackgroundGlow />
+      <header className="mx-auto w-full max-w-xl px-4 pt-6 sm:px-6 sm:pt-10">
+        <div className="mb-6 flex justify-center sm:justify-start">
+          <Logo />
         </div>
+        <StepProgress current={step + 1} total={3} label={STEP_LABELS[step]} />
+      </header>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm text-center">
-            {error}
-          </div>
-        )}
+      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col px-4 pt-8 sm:px-6">
+        <FormAlert id="onboarding-error" message={error} className="mb-6" />
 
         {step === STEPS.INTENT && (
           <IntentStep
@@ -115,7 +116,7 @@ function OnboardingContent() {
             onBack={() => setStep(STEPS.IMPORT)}
           />
         )}
-      </div>
+      </main>
     </div>
   );
 }

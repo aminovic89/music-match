@@ -3,6 +3,15 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Button, { buttonClasses } from '@/components/Button';
+import FormAlert from '@/components/Alert';
+import PageContainer from '@/components/PageContainer';
+import PageHeader from '@/components/PageHeader';
+import Section from '@/components/Section';
+import StickyBar from '@/components/StickyBar';
+import TextField from '@/components/TextField';
+import { RadioGroup, RadioCard, RadioChip } from '@/components/Choice';
+import { LoadingState } from '@/components/States';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -76,123 +85,136 @@ export default function ProfilePage() {
 
   if (!form) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-        {error && <p className="text-red-400 text-sm">{error}</p>}
-      </div>
+      <PageContainer>
+        <PageHeader title="Mon profil" backHref="/home" />
+        <FormAlert id="profile-load-error" message={error} />
+        {!error && <LoadingState label="Chargement du profil…" />}
+      </PageContainer>
     );
   }
 
+  const missingRequired = !form.first_name.trim() || !form.age;
+
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <h1 className="text-2xl font-semibold text-white text-center mb-2">Mon profil</h1>
-        <p className="text-gray-400 text-center text-sm mb-6">
-          Modifie tes informations à tout moment
-        </p>
+    <PageContainer>
+      <PageHeader title="Mon profil" subtitle="Modifie tes informations à tout moment" />
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm text-center">
-            {error}
+      <form
+        className="flex flex-1 flex-col"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!loading && !missingRequired) handleSave();
+        }}
+      >
+        <div className="flex flex-col gap-10">
+          <Section title="Informations">
+            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_8rem]">
+              <TextField
+                label="Prénom"
+                type="text"
+                value={form.first_name}
+                onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                autoComplete="given-name"
+                error={!form.first_name.trim() ? 'Obligatoire' : undefined}
+              />
+              <TextField
+                label="Âge"
+                type="number"
+                inputMode="numeric"
+                value={form.age}
+                onChange={(e) => setForm({ ...form, age: e.target.value })}
+                error={!form.age ? 'Obligatoire' : undefined}
+              />
+            </div>
+            <TextField
+              label="Ville"
+              type="text"
+              value={form.city}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
+              autoComplete="address-level2"
+            />
+          </Section>
+
+          <Section title="Je cherche">
+            <RadioGroup label="Je cherche" className="flex flex-col gap-3">
+              {INTENTS.map((intent) => (
+                <RadioCard
+                  key={intent.id}
+                  name="intent"
+                  value={intent.id}
+                  title={intent.label}
+                  icon={intent.icon}
+                  checked={form.intent === intent.id}
+                  onSelect={(v) => setForm({ ...form, intent: v })}
+                />
+              ))}
+            </RadioGroup>
+          </Section>
+
+          <Section title="Genre">
+            <RadioGroup label="Genre" className="flex flex-wrap gap-2">
+              {GENDERS.map((g) => (
+                <RadioChip
+                  key={g.id}
+                  name="gender"
+                  value={g.id}
+                  label={g.label}
+                  checked={form.gender === g.id}
+                  deselectable
+                  onSelect={(v) => setForm({ ...form, gender: v })}
+                />
+              ))}
+            </RadioGroup>
+          </Section>
+
+          <Section title="Je recherche">
+            <RadioGroup label="Je recherche" className="flex flex-wrap gap-2">
+              {GENDERS.map((g) => (
+                <RadioChip
+                  key={g.id}
+                  name="looking_for"
+                  value={g.id}
+                  label={g.label}
+                  checked={form.looking_for === g.id}
+                  deselectable
+                  onSelect={(v) => setForm({ ...form, looking_for: v })}
+                />
+              ))}
+            </RadioGroup>
+          </Section>
+        </div>
+
+        <div className="flex-1" />
+        <StickyBar>
+          <div className="flex flex-col gap-3">
+            <FormAlert id="profile-error" message={error} />
+            <FormAlert id="profile-success" tone="success" message={success ? 'Profil mis à jour' : null} />
+            {missingRequired && !loading && (
+              <p id="profile-save-reason" className="text-center text-xs text-muted">
+                Renseigne ton prénom et ton âge pour enregistrer.
+              </p>
+            )}
+            <div className="flex gap-3">
+              <Link
+                href="/home"
+                className={buttonClasses({ variant: 'secondary', fullWidth: false, className: 'flex-1 px-3' })}
+              >
+                Retour
+              </Link>
+              <Button
+                type="submit"
+                loading={loading}
+                disabled={missingRequired}
+                aria-describedby={missingRequired ? 'profile-save-reason' : undefined}
+                fullWidth={false}
+                className="flex-[2] px-3"
+              >
+                {loading ? 'Enregistrement...' : 'Enregistrer'}
+              </Button>
+            </div>
           </div>
-        )}
-        {success && (
-          <div className="mb-4 p-3 bg-green-900/30 border border-green-700 rounded-lg text-green-400 text-sm text-center">
-            Profil mis à jour ✓
-          </div>
-        )}
-
-        <div className="flex flex-col gap-3 mb-6">
-          <input
-            type="text"
-            value={form.first_name}
-            onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-            placeholder="Prénom"
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
-          />
-          <input
-            type="number"
-            value={form.age}
-            onChange={(e) => setForm({ ...form, age: e.target.value })}
-            placeholder="Âge"
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
-          />
-          <input
-            type="text"
-            value={form.city}
-            onChange={(e) => setForm({ ...form, city: e.target.value })}
-            placeholder="Ville"
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
-          />
-        </div>
-
-        <p className="text-gray-500 text-xs mb-2">Je cherche</p>
-        <div className="flex flex-col gap-2 mb-6">
-          {INTENTS.map((intent) => (
-            <button
-              key={intent.id}
-              onClick={() => setForm({ ...form, intent: intent.id })}
-              className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
-                form.intent === intent.id
-                  ? 'border-violet-500 bg-violet-500/10'
-                  : 'border-gray-700 bg-gray-900 hover:border-gray-500'
-              }`}
-            >
-              <span className="text-lg">{intent.icon}</span>
-              <span className="text-white text-sm">{intent.label}</span>
-            </button>
-          ))}
-        </div>
-
-        <p className="text-gray-500 text-xs mb-2">Genre</p>
-        <div className="flex gap-2 mb-6">
-          {GENDERS.map((g) => (
-            <button
-              key={g.id}
-              onClick={() => setForm({ ...form, gender: form.gender === g.id ? null : g.id })}
-              className={`flex-1 py-2 rounded-xl border text-sm transition-all ${
-                form.gender === g.id
-                  ? 'border-violet-500 bg-violet-500/10 text-white'
-                  : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500'
-              }`}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-
-        <p className="text-gray-500 text-xs mb-2">Je recherche</p>
-        <div className="flex gap-2 mb-8">
-          {GENDERS.map((g) => (
-            <button
-              key={g.id}
-              onClick={() => setForm({ ...form, looking_for: form.looking_for === g.id ? null : g.id })}
-              className={`flex-1 py-2 rounded-xl border text-sm transition-all ${
-                form.looking_for === g.id
-                  ? 'border-violet-500 bg-violet-500/10 text-white'
-                  : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500'
-              }`}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-3">
-          <Link
-            href="/home"
-            className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-xl text-sm text-center hover:border-gray-500 transition-colors"
-          >
-            ← Retour
-          </Link>
-          <button
-            onClick={handleSave}
-            disabled={loading || !form.first_name.trim() || !form.age}
-            className="flex-2 flex-grow-[2] py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-medium rounded-xl text-sm transition-colors"
-          >
-            {loading ? 'Enregistrement...' : 'Enregistrer'}
-          </button>
-        </div>
-      </div>
-    </div>
+        </StickyBar>
+      </form>
+    </PageContainer>
   );
 }

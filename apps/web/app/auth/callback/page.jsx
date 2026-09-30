@@ -2,6 +2,8 @@
 
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import BackgroundGlow from '@/components/BackgroundGlow';
+import { LoadingState } from '@/components/States';
 
 function SpotifyCallback() {
   const router = useRouter();
@@ -21,8 +23,9 @@ function SpotifyCallback() {
 
 export default function AuthCallbackPage() {
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <p className="text-gray-400 text-sm">Connexion à Spotify...</p>
+    <div className="relative isolate flex min-h-dvh flex-1 items-center justify-center overflow-hidden bg-background p-4">
+      <BackgroundGlow />
+      <LoadingState label="Connexion à Spotify..." />
       <Suspense fallback={null}>
         <SpotifyCallback />
       </Suspense>

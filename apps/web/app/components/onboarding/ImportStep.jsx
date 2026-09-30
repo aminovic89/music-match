@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import Button, { focusRing, Spinner } from '../Button';
+import TextField from '../TextField';
+import Section from '../Section';
+import StickyBar from '../StickyBar';
+import Icon from '../Icon';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const MIN_TRACKS = 10;
@@ -21,7 +26,7 @@ function isDuplicate(list, track) {
   );
 }
 
-export default function ImportStep({ token, selected, onSelectedChange, onSubmit, onBack, loading }) {
+export default function ImportStep({ titleAs: Title = 'h1', token, selected, onSelectedChange, onSubmit, onBack, loading }) {
   const [spotifyConnected, setSpotifyConnected] = useState(false);
   const [importingSpotify, setImportingSpotify] = useState(false);
   const [manualName, setManualName] = useState('');
@@ -123,147 +128,181 @@ export default function ImportStep({ token, selected, onSelectedChange, onSubmit
     onSubmit(selected);
   };
 
+  const missing = MIN_TRACKS - selected.length;
+  const enough = selected.length >= MIN_TRACKS;
+
   return (
-    <div className="flex flex-col">
-      <h1 className="text-2xl font-semibold text-white text-center mb-2">
-        Ta musique
-      </h1>
-      <p className="text-gray-400 text-center text-sm mb-6">
-        Choisis au moins {MIN_TRACKS} titres que tu aimes
-      </p>
-
-      {/* Connexion Spotify */}
-      <a
-        href={`${API}/api/auth/spotify`}
-        className={`flex items-center gap-3 p-4 rounded-xl border mb-4 transition-all ${
-          spotifyConnected
-            ? 'border-green-600 bg-green-900/20'
-            : 'border-gray-700 bg-gray-900 hover:border-violet-500'
-        }`}
-      >
-        <span className="text-2xl">🎵</span>
-        <div className="flex-1">
-          <div className="text-white font-medium text-sm">Connecter Spotify</div>
-          <div className="text-gray-400 text-xs">
-            {importingSpotify
-              ? 'Importation de tes titres...'
-              : spotifyConnected
-                ? '✓ Connecté'
-                : 'Importe automatiquement tes titres les plus écoutés'}
-          </div>
-        </div>
-        {spotifyConnected && <span className="text-green-400 text-sm">✓</span>}
-      </a>
-
-      {/* Saisie manuelle */}
-      <div className="mb-4">
-        <p className="text-gray-500 text-xs mb-2">Ou ajoute un titre manuellement</p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={manualName}
-            onChange={(e) => setManualName(e.target.value)}
-            placeholder="Titre"
-            className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
-          />
-          <input
-            type="text"
-            value={manualArtist}
-            onChange={(e) => setManualArtist(e.target.value)}
-            placeholder="Artiste"
-            className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
-          />
-          <button
-            onClick={addManualTrack}
-            disabled={!manualName.trim()}
-            className="px-4 bg-gray-800 border border-gray-700 disabled:opacity-40 text-white rounded-xl text-sm hover:border-violet-500 transition-colors"
-          >
-            + Ajouter
-          </button>
-        </div>
-
-        {/* Suggestions Deezer en direct */}
-        {manualSearching && (
-          <p className="text-gray-500 text-xs mt-2">Recherche...</p>
-        )}
-        {!manualSearching && manualSuggestions.length > 0 && (
-          <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">
-            {manualSuggestions.map((track) => (
-              <button
-                key={track.track_id}
-                onClick={() => addSuggestion(track)}
-                className="flex items-center gap-3 p-2 rounded-lg border border-gray-800 hover:border-violet-500 text-left transition-all"
-              >
-                <span className="text-base">🎵</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-white text-sm truncate">{track.track_name}</div>
-                  <div className="text-gray-400 text-xs truncate">{track.artist_name}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
+    <div className="flex flex-1 flex-col">
+      <div className="mb-8 flex flex-col gap-2">
+        <Title className="text-2xl font-semibold tracking-tight text-fg sm:text-3xl">Ta musique</Title>
+        <p className="text-base text-muted">Choisis au moins {MIN_TRACKS} titres que tu aimes</p>
       </div>
 
-      {/* Titres sélectionnés */}
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-gray-400 text-xs">Titres sélectionnés</span>
-        <span className={`text-xs font-medium ${selected.length >= MIN_TRACKS ? 'text-green-400' : 'text-gray-400'}`}>
-          {selected.length}{selected.length < MIN_TRACKS ? ` (min. ${MIN_TRACKS})` : ''}
-        </span>
-      </div>
-      <div className="flex flex-col gap-2 mb-6 max-h-56 overflow-y-auto">
-        {selected.length === 0 && (
-          <p className="text-gray-600 text-xs italic">Aucun titre pour l&apos;instant</p>
-        )}
-        {selected.map((track) => (
-          <div
-            key={track.track_id}
-            className="flex items-center gap-3 p-3 rounded-lg border border-violet-500 bg-violet-500/10"
+      <div className="flex flex-col gap-10">
+        {/* Connexion Spotify */}
+        <a
+          href={`${API}/api/auth/spotify`}
+          aria-busy={importingSpotify || undefined}
+          className={`group flex min-h-14 items-center gap-3 rounded-2xl border p-4 transition-colors ${
+            spotifyConnected
+              ? 'border-success-line bg-success-bg'
+              : 'border-line-strong bg-surface hover:border-accent-text'
+          } ${focusRing}`}
+        >
+          <span
+            aria-hidden="true"
+            className={`flex size-10 shrink-0 items-center justify-center rounded-full ${
+              spotifyConnected ? 'bg-success/15 text-success' : 'bg-accent/15 text-accent-text'
+            }`}
           >
-            <span className="text-lg">{track.source === 'manual' ? '✏️' : '🎵'}</span>
-            <div className="flex-1 min-w-0">
-              <div className="text-white text-sm font-medium truncate">{track.track_name}</div>
-              <div className="text-gray-400 text-xs truncate">{track.artist_name}</div>
-            </div>
-            <button
-              onClick={() => removeTrack(track.track_id)}
-              className="text-gray-500 hover:text-red-400 text-sm flex-shrink-0 px-1"
-              aria-label="Retirer"
+            {importingSpotify ? <Spinner /> : <Icon name={spotifyConnected ? 'check' : 'music'} />}
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="text-base font-semibold text-fg">Connecter Spotify</span>
+            <span className={`text-sm ${spotifyConnected ? 'font-medium text-success' : 'text-muted'}`}>
+              {importingSpotify
+                ? 'Importation de tes titres...'
+                : spotifyConnected
+                  ? '✓ Connecté'
+                  : 'Importe automatiquement tes titres les plus écoutés'}
+            </span>
+          </span>
+          <Icon name="chevronRight" className="size-5 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
+        </a>
+
+        {/* Saisie manuelle + suggestions Deezer en direct */}
+        <Section title="Ou ajoute un titre manuellement">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TextField
+              label="Titre"
+              type="text"
+              value={manualName}
+              onChange={(e) => setManualName(e.target.value)}
+              placeholder="Ex. Tout oublier"
+              autoComplete="off"
+            />
+            <TextField
+              label="Artiste"
+              type="text"
+              value={manualArtist}
+              onChange={(e) => setManualArtist(e.target.value)}
+              placeholder="Ex. Angèle"
+              autoComplete="off"
+            />
+          </div>
+
+          <div aria-live="polite">
+            {manualSearching && (
+              <p className="flex items-center gap-2 text-sm text-muted">
+                <Spinner /> Recherche...
+              </p>
+            )}
+          </div>
+          {!manualSearching && manualSuggestions.length > 0 && (
+            <ul aria-label="Suggestions" className="flex flex-col gap-2">
+              {manualSuggestions.map((track) => (
+                <li key={track.track_id}>
+                  <button
+                    type="button"
+                    onClick={() => addSuggestion(track)}
+                    aria-label={`Ajouter ${track.track_name}, ${track.artist_name}`}
+                    className={`flex min-h-14 w-full items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2 text-left transition-colors hover:border-accent-text hover:bg-surface-2 ${focusRing}`}
+                  >
+                    <TrackGlyph icon="music" />
+                    <TrackInfo name={track.track_name} artist={track.artist_name} />
+                    <Icon name="plus" className="size-5 shrink-0 text-accent-text" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <Button variant="secondary" onClick={addManualTrack} disabled={!manualName.trim()}>
+            <Icon name="plus" className="size-5" />
+            Ajouter ce titre
+          </Button>
+        </Section>
+
+        {/* Titres sélectionnés */}
+        <Section
+          title="Titres sélectionnés"
+          right={
+            <span
+              className={`rounded-full border px-3 py-0.5 text-xs font-semibold tabular-nums ${
+                enough ? 'border-success-line bg-success-bg text-success' : 'border-line text-muted'
+              }`}
             >
-              ✕
-            </button>
-          </div>
-        ))}
+              {enough ? '✓ ' : ''}{selected.length} / {MIN_TRACKS}
+              <span className="sr-only"> titres sélectionnés, minimum {MIN_TRACKS}</span>
+            </span>
+          }
+        >
+          {selected.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-line-strong p-4 text-center text-sm text-muted">
+              Aucun titre pour l&apos;instant
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {selected.map((track) => (
+                <li
+                  key={track.track_id}
+                  className="flex min-h-14 items-center gap-3 rounded-xl border border-accent/45 bg-surface py-1 pr-1 pl-3"
+                >
+                  <TrackGlyph icon={track.source === 'manual' ? 'pencil' : 'music'} />
+                  <TrackInfo name={track.track_name} artist={track.artist_name} />
+                  <button
+                    type="button"
+                    onClick={() => removeTrack(track.track_id)}
+                    aria-label={`Retirer ${track.track_name}`}
+                    className={`flex size-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-danger ${focusRing}`}
+                  >
+                    <Icon name="x" className="size-5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
       </div>
 
-      {selected.length < MIN_TRACKS && (
+      <div className="flex-1" />
+      <StickyBar>
         <p
-          className={`text-xs text-center -mt-4 mb-4 ${
-            belowMinAttempted ? 'text-red-400 font-medium' : 'text-gray-500'
-          }`}
+          aria-live="polite"
+          className={`mb-2 text-center text-xs empty:hidden ${belowMinAttempted ? 'font-semibold text-danger' : 'text-muted'}`}
         >
-          {belowMinAttempted
-            ? `Il te manque ${MIN_TRACKS - selected.length} titre${MIN_TRACKS - selected.length > 1 ? 's' : ''} pour enregistrer (minimum ${MIN_TRACKS})`
-            : `Encore ${MIN_TRACKS - selected.length} titre${MIN_TRACKS - selected.length > 1 ? 's' : ''} pour continuer`}
+          {selected.length < MIN_TRACKS
+            ? (belowMinAttempted
+              ? `Il te manque ${missing} titre${missing > 1 ? 's' : ''} pour enregistrer (minimum ${MIN_TRACKS})`
+              : `Encore ${missing} titre${missing > 1 ? 's' : ''} pour continuer`)
+            : ''}
         </p>
-      )}
-
-      <div className="flex gap-3">
-        <button
-          onClick={onBack}
-          className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-xl text-sm hover:border-gray-500 transition-colors"
-        >
-          ← Retour
-        </button>
-        <button
-          onClick={handleSubmitClick}
-          disabled={loading}
-          className="flex-2 flex-grow-[2] py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-medium rounded-xl text-sm transition-colors"
-        >
-          {loading ? 'Analyse...' : `Analyser (${selected.length})`}
-        </button>
-      </div>
+        <div className="flex gap-3">
+          <Button variant="secondary" onClick={onBack} fullWidth={false} className="flex-1 px-3">
+            Retour
+          </Button>
+          <Button onClick={handleSubmitClick} loading={loading} fullWidth={false} className="flex-[2] px-3">
+            {loading ? 'Analyse...' : `Analyser (${selected.length})`}
+          </Button>
+        </div>
+      </StickyBar>
     </div>
+  );
+}
+
+function TrackGlyph({ icon }) {
+  return (
+    <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-accent-text">
+      <Icon name={icon} className="size-4" />
+    </span>
+  );
+}
+
+function TrackInfo({ name, artist }) {
+  return (
+    <span className="flex min-w-0 flex-1 flex-col">
+      <span className="truncate text-sm font-medium text-fg">{name}</span>
+      {artist && <span className="truncate text-xs text-muted">{artist}</span>}
+    </span>
   );
 }
