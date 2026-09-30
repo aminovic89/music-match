@@ -2,16 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Screen from '../components/Screen';
 import Button from '../components/Button';
-import Card from '../components/Card';
 import Section from '../components/Section';
 import ListRow from '../components/ListRow';
 import Avatar from '../components/Avatar';
-import Logo, { LogoMark } from '../components/Logo';
+import Logo from '../components/Logo';
 import FormAlert from '../components/Alert';
 import { colors, spacing, fontSize, fontWeight, lineHeight, typography } from '../theme';
 import { apiClient } from '@music-match/shared';
 
-export default function HomeScreen({ onLogout, onNavigateProfile, onNavigateMusic }) {
+export default function HomeScreen({ onLogout, onNavigateProfile, onNavigateMusic, onNavigateDiscover, onNavigateMatches }) {
   const [user, setUser] = useState(null);
   const [error, setError] = useState(null);
 
@@ -37,18 +36,24 @@ export default function HomeScreen({ onLogout, onNavigateProfile, onNavigateMusi
       </View>
 
       <View style={styles.sections}>
-        {/* Statut : la découverte et les matchs n'existent que sur le web
-            (apps/web/app/(app)/discover et /matches) ; pas de lien profond
-            vers le web dans l'appli, donc simple note non interactive. */}
-        <Card compact style={styles.status}>
-          <LogoMark size={40} />
-          <View style={styles.statusText}>
-            <Text style={styles.statusTitle}>Tes matchs sont sur le web</Text>
-            <Text style={typography.subtitle}>
-              {"Pour l'instant, la découverte de profils et tes matchs se trouvent sur la version web de Music Match."}
-            </Text>
+        {/* Découverte et matchs : accès rapide (comme "Trouve tes prochains
+            matchs" sur la home web). */}
+        <Section title="Trouve tes prochains matchs">
+          <View style={styles.rows}>
+            <ListRow
+              icon="◎"
+              title="Découvrir des profils"
+              description="Des profils classés par compatibilité musicale"
+              onPress={onNavigateDiscover}
+            />
+            <ListRow
+              icon="♥"
+              title="Mes matchs"
+              description="Les personnes avec qui le like est réciproque"
+              onPress={onNavigateMatches}
+            />
           </View>
-        </Card>
+        </Section>
 
         <Section title="Ton compte">
           <View style={styles.rows}>
@@ -89,9 +94,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
   },
   sections: { gap: spacing.xxl },
-  status: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.lg },
-  statusText: { flex: 1, gap: spacing.xs },
-  statusTitle: { color: colors.text, fontSize: fontSize.base, lineHeight: lineHeight.base, fontWeight: fontWeight.semibold },
   rows: { gap: spacing.sm },
   logout: { marginTop: 'auto', paddingTop: spacing.xxl, alignItems: 'center' },
 });

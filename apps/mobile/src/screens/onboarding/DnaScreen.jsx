@@ -10,16 +10,7 @@ import {
   colors, accentGradient, radius, spacing, typography, fontSize, fontWeight,
 } from '../../theme';
 
-const MOODS_LABELS = {
-  energetic: { label: 'Énergique', emoji: '⚡' },
-  chill: { label: 'Chill', emoji: '😌' },
-  happy: { label: 'Joyeux', emoji: '😊' },
-  melancholic: { label: 'Mélancolique', emoji: '🌙' },
-  danceable: { label: 'Dansant', emoji: '💃' },
-  intense: { label: 'Intense', emoji: '🔥' },
-  romantic: { label: 'Romantique', emoji: '🌹' },
-  neutral: { label: 'Neutre', emoji: '🎵' },
-};
+import { moodInfo } from '../../moods';
 
 // Mêmes seuils que deriveMoods (apps/api/src/services/spotify.js), pour que
 // la légende reste cohérente avec les moods affichés juste en dessous.
@@ -144,7 +135,7 @@ export default function DnaScreen({ header, profile, onComplete, onBack }) {
             <Section title="Tes moods">
               <View style={styles.tags}>
                 {profile.top_moods.map((mood) => {
-                  const info = MOODS_LABELS[mood] || { label: mood, emoji: '🎵' };
+                  const info = moodInfo(mood);
                   return <Chip key={mood} label={`${info.emoji} ${info.label}`} tone="accent2" />;
                 })}
               </View>
