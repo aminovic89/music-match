@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import AuthShell from '../components/AuthShell';
+import Button from '../components/Button';
+import TextField, { PasswordField } from '../components/TextField';
+import TextLink from '../components/TextLink';
+import FormAlert from '../components/Alert';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -35,61 +39,51 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <h1 className="text-2xl font-semibold text-white text-center mb-2">
-          Content de te revoir 👋
-        </h1>
-        <p className="text-gray-400 text-center text-sm mb-8">
-          Connecte-toi pour retrouver tes matchs
-        </p>
+    <AuthShell
+      title="Content de te revoir"
+      subtitle="Connecte-toi pour retrouver tes matchs"
+      footer={
+        <>
+          Pas encore de compte ?{' '}
+          <TextLink href="/register">Crée-en un</TextLink>
+        </>
+      }
+    >
+      <FormAlert id="login-error" message={error} className="mb-4" />
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm text-center">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <input
-            type="email"
+      <form
+        onSubmit={handleSubmit}
+        aria-describedby={error ? 'login-error' : undefined}
+        className="flex flex-col gap-4"
+      >
+        <TextField
+          label="Email"
+          type="email"
+          required
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="toi@exemple.com"
+        />
+        <div>
+          <PasswordField
+            label="Mot de passe"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
-          />
-          <input
-            type="password"
-            required
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Mot de passe"
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
           />
+          <div className="mt-1 flex justify-end">
+            <TextLink href="/forgot-password" standalone className="text-sm">
+              Mot de passe oublié ?
+            </TextLink>
+          </div>
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 mt-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-medium rounded-xl transition-colors"
-          >
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </button>
-        </form>
-
-        <p className="text-gray-500 text-sm text-center mt-4">
-          <Link href="/forgot-password" className="text-violet-400 hover:text-violet-300">
-            Mot de passe oublié ?
-          </Link>
-        </p>
-
-        <p className="text-gray-500 text-sm text-center mt-6">
-          Pas encore de compte ?{' '}
-          <Link href="/register" className="text-violet-400 hover:text-violet-300">
-            Crée-en un
-          </Link>
-        </p>
-      </div>
-    </div>
+        <Button type="submit" loading={loading} className="mt-1">
+          {loading ? 'Connexion...' : 'Se connecter'}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

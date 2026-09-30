@@ -1,7 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import AuthShell from '../components/AuthShell';
+import Button from '../components/Button';
+import TextField from '../components/TextField';
+import TextLink from '../components/TextLink';
+import FormAlert, { Alert } from '../components/Alert';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -32,52 +36,46 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <h1 className="text-2xl font-semibold text-white text-center mb-2">
-          Mot de passe oublié ?
-        </h1>
-        <p className="text-gray-400 text-center text-sm mb-8">
-          Indique ton email, on t&apos;envoie un lien de réinitialisation
-        </p>
+    <AuthShell
+      title="Mot de passe oublié ?"
+      subtitle="Indique ton email, on t'envoie un lien de réinitialisation"
+      footer={
+        <TextLink href="/login" standalone>
+          <span aria-hidden="true">←&nbsp;</span>Retour à la connexion
+        </TextLink>
+      }
+    >
+      <FormAlert id="forgot-error" message={error} className="mb-4" />
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm text-center">
-            {error}
-          </div>
-        )}
-
-        {sent ? (
-          <div className="p-4 bg-violet-500/10 border border-violet-500 rounded-xl text-gray-300 text-sm text-center">
+      <div role="status">
+        {sent && (
+          <Alert tone="success">
             Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 text-sm"
-            />
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 mt-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-medium rounded-xl transition-colors"
-            >
-              {loading ? 'Envoi...' : 'Envoyer le lien'}
-            </button>
-          </form>
+          </Alert>
         )}
-
-        <p className="text-gray-500 text-sm text-center mt-6">
-          <Link href="/login" className="text-violet-400 hover:text-violet-300">
-            ← Retour à la connexion
-          </Link>
-        </p>
       </div>
-    </div>
+
+      {!sent && (
+        <form
+          onSubmit={handleSubmit}
+          aria-describedby={error ? 'forgot-error' : undefined}
+          className="flex flex-col gap-4"
+        >
+          <TextField
+            label="Email"
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="toi@exemple.com"
+          />
+
+          <Button type="submit" loading={loading} className="mt-1">
+            {loading ? 'Envoi...' : 'Envoyer le lien'}
+          </Button>
+        </form>
+      )}
+    </AuthShell>
   );
 }
