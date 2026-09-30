@@ -1,23 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+type AuthState = 'pending' | 'authenticated' | 'guest';
+
+const subscribe = (onChange: () => void) => {
+  window.addEventListener('storage', onChange);
+  return () => window.removeEventListener('storage', onChange);
+};
+const getSnapshot = (): AuthState =>
+  localStorage.getItem('mm_token') ? 'authenticated' : 'guest';
+const getServerSnapshot = (): AuthState => 'pending';
+
 export default function Home() {
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
+  const auth = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   useEffect(() => {
-    const token = localStorage.getItem('mm_token');
-    if (token) {
-      router.replace('/home');
-    } else {
-      setChecked(true);
-    }
-  }, [router]);
+    if (auth === 'authenticated') router.replace('/home');
+  }, [auth, router]);
 
-  if (!checked) return null;
+  if (auth !== 'guest') return null;
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4">
