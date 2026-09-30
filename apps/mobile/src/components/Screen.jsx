@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -73,6 +73,13 @@ export function ScreenIntro({ title, subtitle, style }) {
   );
 }
 
+// Vrai quand l'écran est rendu au-dessus de la barre d'onglets (fourni par
+// le conteneur des onglets dans App.tsx). La TabBar applique déjà l'inset
+// bas de la safe area (indicateur d'accueil / barre de navigation Android) :
+// l'écran ne doit pas le rajouter, sinon ~34pt de vide s'empilent au-dessus
+// des onglets sur un iPhone à Face ID.
+export const AboveTabBarContext = createContext(false);
+
 // Coquille commune des écrans "app" (hors auth) :
 // - safe area (encoche, barre de gestes, edge-to-edge Android) — remplace
 //   les anciens paddingTop: 60 en dur ;
@@ -83,7 +90,11 @@ export function ScreenIntro({ title, subtitle, style }) {
 //   est ouvert (sur iPhone SE, clavier + barre ne laissent sinon que
 //   ~150pt de contenu) ; elle réapparaît à la fermeture du clavier.
 // - `center` : contenu centré verticalement (chargement, état vide).
+// - `aboveTabBar` : force le mode "au-dessus des onglets" (sinon lu dans
+//   AboveTabBarContext). Les écrans poussés (profil, musique, onboarding)
+//   gardent l'inset bas.
 export default function Screen({
+  aboveTabBar,
   title,
   onBack,
   header,
@@ -95,6 +106,8 @@ export default function Screen({
   contentStyle,
 }) {
   const insets = useSafeAreaInsets();
+  const inTabs = useContext(AboveTabBarContext);
+  const bottomInset = (aboveTabBar ?? inTabs) ? 0 : insets.bottom;
   const keyboardVisible = useKeyboardVisible();
   const showFooter = !!footer && !(hideFooterWithKeyboard && keyboardVisible);
 
@@ -105,7 +118,7 @@ export default function Screen({
     paddingLeft: insets.left + spacing.gutter,
     paddingRight: insets.right + spacing.gutter,
   };
-  const bottomPadding = showFooter ? spacing.xl : insets.bottom + spacing.xl;
+  const bottomPadding = showFooter ? spacing.xl : bottomInset + spacing.xl;
 
   const inner = <View style={[styles.inner, center && styles.center, contentStyle]}>{children}</View>;
 
@@ -131,7 +144,7 @@ export default function Screen({
         )}
 
         {showFooter ? (
-          <View style={[styles.footer, sidePadding, { paddingBottom: insets.bottom + spacing.md }]}>
+          <View style={[styles.footer, sidePadding, { paddingBottom: bottomInset + spacing.md }]}>
             <View style={styles.constrained}>{footer}</View>
           </View>
         ) : null}

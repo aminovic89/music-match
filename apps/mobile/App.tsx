@@ -11,6 +11,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import DiscoverScreen from './src/screens/DiscoverScreen';
 import MatchesScreen from './src/screens/MatchesScreen';
 import TabBar from './src/components/TabBar';
+import { AboveTabBarContext } from './src/components/Screen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import MusicEditScreen from './src/screens/MusicEditScreen';
 import OnboardingNavigator from './src/screens/onboarding/OnboardingNavigator';
@@ -130,30 +131,34 @@ export default function App() {
       )}
       {(screen === 'home' || screen === 'discover' || screen === 'matches') && (
         <View style={styles.flex}>
-          <View style={styles.flex}>
-            {screen === 'home' && (
-              <HomeScreen
-                onLogout={handleLogout}
-                onNavigateProfile={() => setScreen('profile')}
-                onNavigateMusic={() => setScreen('music')}
-                onNavigateDiscover={() => setScreen('discover')}
-                onNavigateMatches={() => setScreen('matches')}
-              />
-            )}
-            {screen === 'discover' && (
-              <DiscoverScreen
-                onNavigateMatches={() => setScreen('matches')}
-                onNavigateMusic={() => setScreen('music')}
-                onUnauthorized={handleLogout}
-              />
-            )}
-            {screen === 'matches' && (
-              <MatchesScreen
-                onNavigateDiscover={() => setScreen('discover')}
-                onUnauthorized={handleLogout}
-              />
-            )}
-          </View>
+          {/* Les écrans à onglets ne rajoutent pas l'inset bas : la TabBar
+              en dessous s'en charge (sinon double espace au-dessus). */}
+          <AboveTabBarContext.Provider value={true}>
+            <View style={styles.flex}>
+              {screen === 'home' && (
+                <HomeScreen
+                  onLogout={handleLogout}
+                  onNavigateProfile={() => setScreen('profile')}
+                  onNavigateMusic={() => setScreen('music')}
+                  onNavigateDiscover={() => setScreen('discover')}
+                  onNavigateMatches={() => setScreen('matches')}
+                />
+              )}
+              {screen === 'discover' && (
+                <DiscoverScreen
+                  onNavigateMatches={() => setScreen('matches')}
+                  onNavigateMusic={() => setScreen('music')}
+                  onUnauthorized={handleLogout}
+                />
+              )}
+              {screen === 'matches' && (
+                <MatchesScreen
+                  onNavigateDiscover={() => setScreen('discover')}
+                  onUnauthorized={handleLogout}
+                />
+              )}
+            </View>
+          </AboveTabBarContext.Provider>
           <TabBar current={screen as Tab} onNavigate={(tab: Tab) => setScreen(tab)} />
         </View>
       )}
