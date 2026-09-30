@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
-import {
-  Text, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
-} from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Text, View, StyleSheet, useWindowDimensions } from 'react-native';
 import { apiClient } from '@music-match/shared';
+import AuthScreen from '../../components/AuthScreen';
+import Button from '../../components/Button';
+import TextField, { PasswordField } from '../../components/TextField';
+import TextLink from '../../components/TextLink';
+import FormAlert from '../../components/Alert';
+import { colors, fontSize, spacing } from '../../theme';
 
 export default function RegisterScreen({ onSuccess, onNavigateLogin }) {
   const [firstName, setFirstName] = useState('');
@@ -12,6 +15,15 @@ export default function RegisterScreen({ onSuccess, onNavigateLogin }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const ageRef = useRef(null);
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+
+  // Prénom + Âge côte à côte (comme sur le web) seulement s'il y a la
+  // place : sur iPhone SE (320pt) ou avec une grande taille de police,
+  // on empile pour ne pas tronquer les libellés.
+  const { width, fontScale } = useWindowDimensions();
+  const sideBySide = width >= 360 && fontScale <= 1.3;
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -32,88 +44,90 @@ export default function RegisterScreen({ onSuccess, onNavigateLogin }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <AuthScreen
+      title="Rejoins Music Match"
+      subtitle="Trouve des gens qui ressentent la musique comme toi"
+      footer={
+        <>
+          <Text style={styles.footerText}>Déjà un compte ? </Text>
+          <TextLink title="Connecte-toi" onPress={onNavigateLogin} />
+        </>
+      }
     >
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Rejoins Music Match 🎧</Text>
-        <Text style={styles.subtitle}>Trouve des gens qui ressentent la musique comme toi</Text>
+      <FormAlert message={error} style={styles.alert} />
 
-        {error && <Text style={styles.error}>{error}</Text>}
-
-        <TextInput
-          style={styles.input}
-          value={firstName}
-          onChangeText={setFirstName}
-          placeholder="Prénom"
-          placeholderTextColor="#6b7280"
-        />
-        <TextInput
-          style={styles.input}
-          value={age}
-          onChangeText={setAge}
-          placeholder="Âge"
-          placeholderTextColor="#6b7280"
-          keyboardType="number-pad"
-        />
-        <TextInput
-          style={styles.input}
+      <View style={styles.form}>
+        <View style={sideBySide ? styles.row : styles.form}>
+          <TextField
+            label="Prénom"
+            value={firstName}
+            onChangeText={setFirstName}
+            autoComplete="given-name"
+            textContentType="givenName"
+            autoCapitalize="words"
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => ageRef.current?.focus()}
+            style={sideBySide && styles.grow}
+          />
+          <TextField
+            ref={ageRef}
+            label="Âge"
+            value={age}
+            onChangeText={setAge}
+            keyboardType="number-pad"
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => emailRef.current?.focus()}
+            style={sideBySide && styles.age}
+          />
+        </View>
+        <TextField
+          ref={emailRef}
+          label="Email"
           value={email}
           onChangeText={setEmail}
-          placeholder="Email"
-          placeholderTextColor="#6b7280"
+          placeholder="toi@exemple.com"
           autoCapitalize="none"
+          autoCorrect={false}
           keyboardType="email-address"
+          autoComplete="email"
+          textContentType="emailAddress"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => passwordRef.current?.focus()}
         />
-        <TextInput
-          style={styles.input}
+        <PasswordField
+          ref={passwordRef}
+          label="Mot de passe"
+          hint="8 caractères minimum"
           value={password}
           onChangeText={setPassword}
-          placeholder="Mot de passe (8 caractères min.)"
-          placeholderTextColor="#6b7280"
-          secureTextEntry
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="done"
         />
 
-        <TouchableOpacity
-          style={[styles.submitBtn, loading && styles.submitDisabled]}
+        <Button
+          title={loading ? 'Création...' : 'Créer mon compte'}
           onPress={handleSubmit}
-          disabled={loading}
-        >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.submitText}>Créer mon compte</Text>
-          }
-        </TouchableOpacity>
+          loading={loading}
+          style={styles.submit}
+        />
 
-        <TouchableOpacity onPress={onNavigateLogin} style={styles.link}>
-          <Text style={styles.linkText}>
-            Déjà un compte ? <Text style={styles.linkAccent}>Connecte-toi</Text>
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <Text style={styles.note}>Réservé aux 18 ans et plus.</Text>
+      </View>
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#09090b' },
-  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 60 },
-  title: { fontSize: 24, fontWeight: '600', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#9ca3af', textAlign: 'center', marginBottom: 32 },
-  error: { color: '#f87171', textAlign: 'center', marginBottom: 12, fontSize: 13 },
-  input: {
-    backgroundColor: '#18181b', borderWidth: 1, borderColor: '#3f3f46',
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    color: '#fff', fontSize: 14, marginBottom: 12,
-  },
-  submitBtn: {
-    marginTop: 8, paddingVertical: 14, borderRadius: 16,
-    backgroundColor: '#7c3aed', alignItems: 'center',
-  },
-  submitDisabled: { opacity: 0.4 },
-  submitText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  link: { marginTop: 24, alignItems: 'center' },
-  linkText: { color: '#9ca3af', fontSize: 13 },
-  linkAccent: { color: '#a78bfa' },
+  alert: { marginBottom: spacing.lg },
+  form: { gap: spacing.lg },
+  row: { flexDirection: 'row', gap: spacing.md },
+  grow: { flex: 1 },
+  age: { width: 104 },
+  submit: { marginTop: spacing.xs },
+  note: { color: colors.textMuted, fontSize: fontSize.xs, textAlign: 'center' },
+  footerText: { color: colors.textMuted, fontSize: fontSize.sm },
 });

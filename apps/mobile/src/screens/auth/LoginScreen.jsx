@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
-import {
-  Text, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform,
-} from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Text, View, StyleSheet } from 'react-native';
 import { apiClient } from '@music-match/shared';
+import AuthScreen from '../../components/AuthScreen';
+import Button from '../../components/Button';
+import TextField, { PasswordField } from '../../components/TextField';
+import TextLink from '../../components/TextLink';
+import FormAlert from '../../components/Alert';
+import { colors, fontSize, spacing } from '../../theme';
 
 export default function LoginScreen({ onSuccess, onNavigateRegister }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const passwordRef = useRef(null);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -25,70 +29,62 @@ export default function LoginScreen({ onSuccess, onNavigateRegister }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <AuthScreen
+      title="Content de te revoir"
+      subtitle="Connecte-toi pour retrouver tes matchs"
+      footer={
+        <>
+          <Text style={styles.footerText}>Pas encore de compte ? </Text>
+          <TextLink title="Crée-en un" onPress={onNavigateRegister} />
+        </>
+      }
     >
-      <Text style={styles.title}>Content de te revoir 👋</Text>
-      <Text style={styles.subtitle}>Connecte-toi pour retrouver tes matchs</Text>
+      <FormAlert message={error} style={styles.alert} />
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      <View style={styles.form}>
+        <TextField
+          label="Email"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="toi@exemple.com"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          autoComplete="email"
+          textContentType="emailAddress"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+        />
+        <PasswordField
+          ref={passwordRef}
+          label="Mot de passe"
+          value={password}
+          onChangeText={setPassword}
+          autoComplete="current-password"
+          textContentType="password"
+          returnKeyType="go"
+          // Touche "Go" du clavier = même action que le bouton (ignorée
+          // pendant l'envoi, comme le bouton désactivé).
+          onSubmitEditing={() => {
+            if (!loading) handleSubmit();
+          }}
+        />
 
-      <TextInput
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        placeholder="Email"
-        placeholderTextColor="#6b7280"
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        placeholder="Mot de passe"
-        placeholderTextColor="#6b7280"
-        secureTextEntry
-      />
-
-      <TouchableOpacity
-        style={[styles.submitBtn, loading && styles.submitDisabled]}
-        onPress={handleSubmit}
-        disabled={loading}
-      >
-        {loading
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={styles.submitText}>Se connecter</Text>
-        }
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={onNavigateRegister} style={styles.link}>
-        <Text style={styles.linkText}>
-          Pas encore de compte ? <Text style={styles.linkAccent}>Crée-en un</Text>
-        </Text>
-      </TouchableOpacity>
-    </KeyboardAvoidingView>
+        <Button
+          title={loading ? 'Connexion...' : 'Se connecter'}
+          onPress={handleSubmit}
+          loading={loading}
+          style={styles.submit}
+        />
+      </View>
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#09090b', justifyContent: 'center', paddingHorizontal: 24 },
-  title: { fontSize: 24, fontWeight: '600', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#9ca3af', textAlign: 'center', marginBottom: 32 },
-  error: { color: '#f87171', textAlign: 'center', marginBottom: 12, fontSize: 13 },
-  input: {
-    backgroundColor: '#18181b', borderWidth: 1, borderColor: '#3f3f46',
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    color: '#fff', fontSize: 14, marginBottom: 12,
-  },
-  submitBtn: {
-    marginTop: 8, paddingVertical: 14, borderRadius: 16,
-    backgroundColor: '#7c3aed', alignItems: 'center',
-  },
-  submitDisabled: { opacity: 0.4 },
-  submitText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  link: { marginTop: 24, alignItems: 'center' },
-  linkText: { color: '#9ca3af', fontSize: 13 },
-  linkAccent: { color: '#a78bfa' },
+  alert: { marginBottom: spacing.lg },
+  form: { gap: spacing.lg },
+  submit: { marginTop: spacing.xs },
+  footerText: { color: colors.textMuted, fontSize: fontSize.sm },
 });
