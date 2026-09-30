@@ -1,4 +1,5 @@
 const db = require('../database/db');
+const { sendMatchEmail } = require('./email');
 const { computeMatchScore } = require('@music-match/shared/src/scoring');
 
 const DEFAULT_MATCH_THRESHOLD = parseFloat(process.env.DEFAULT_MATCH_THRESHOLD || '0.80');
@@ -163,6 +164,7 @@ async function likeUser(fromUserId, toUserId) {
 
   const [userAId, userBId] = fromUserId < toUserId ? [fromUserId, toUserId] : [toUserId, fromUserId];
 
+  let created = false;
   const match = await db.withTransaction(async (client) => {
     const insertResult = await client.query(
       `INSERT INTO matches (user_a_id, user_b_id, score)
@@ -182,6 +184,7 @@ async function likeUser(fromUserId, toUserId) {
       );
       matchRow = existing.rows[0];
     } else {
+      created = true;
       await client.query(
         `INSERT INTO conversations (match_id) VALUES ($1) ON CONFLICT (match_id) DO NOTHING`,
         [matchRow.id]
@@ -193,7 +196,26 @@ async function likeUser(fromUserId, toUserId) {
     return matchRow;
   });
 
+  if (created) await notifyMatch(toUserId, fromUserId);
+
   return { liked: true, matched: true, match };
+}
+
+// Prévient par email la personne qui avait liké en premier (toUserId) ; celle
+// qui vient de liker voit le match directement dans la réponse. Un échec
+// d'envoi ne doit pas faire échouer le like.
+async function notifyMatch(recipientId, matchedUserId) {
+  try {
+    const { rows } = await db.query(
+      'SELECT id, email, first_name FROM users WHERE id = ANY($1::uuid[])',
+      [[recipientId, matchedUserId]]
+    );
+    const recipient = rows.find((u) => u.id === recipientId);
+    const matchedUser = rows.find((u) => u.id === matchedUserId);
+    if (recipient && matchedUser) await sendMatchEmail(recipient, matchedUser);
+  } catch (err) {
+    console.error('[match] Notification email non envoyée :', err.message);
+  }
 }
 
 async function getUserMatches(userId) {
