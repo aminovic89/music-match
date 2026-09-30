@@ -6,7 +6,7 @@
   "build": {
     "base": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://music-match-api-prod.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://music-match-api.onrender.com"
       }
     },
     "preview": {
