@@ -21,6 +21,12 @@ export function Spinner({ className = '' }) {
   );
 }
 
+// Classes d'un bouton, réutilisables sur un <Link> (CTA de navigation) :
+// un lien qui ressemble à un bouton reste un lien pour l'accessibilité.
+export function buttonClasses({ variant = 'primary', fullWidth = true, className = '' } = {}) {
+  return `inline-flex min-h-12 items-center justify-center gap-2 rounded-field px-5 text-base font-semibold tracking-tight transition-[filter,background-color,color] duration-150 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:brightness-100 ${fullWidth ? 'w-full' : ''} ${VARIANTS[variant]} ${focusRing} ${className}`;
+}
+
 export default function Button({
   variant = 'primary',
   loading = false,
@@ -36,7 +42,7 @@ export default function Button({
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-field px-5 text-base font-semibold tracking-tight transition-[filter,background-color,color] duration-150 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:brightness-100 ${fullWidth ? 'w-full' : ''} ${VARIANTS[variant]} ${focusRing} ${className}`}
+      className={buttonClasses({ variant, fullWidth, className })}
       {...props}
     >
       {loading && <Spinner />}
