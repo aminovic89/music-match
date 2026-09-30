@@ -18,6 +18,8 @@ const callbacks = () => ({
   onLogout: jest.fn(),
   onNavigateProfile: jest.fn(),
   onNavigateMusic: jest.fn(),
+  onNavigateDiscover: jest.fn(),
+  onNavigateMatches: jest.fn(),
 });
 
 beforeEach(() => jest.clearAllMocks());
@@ -30,7 +32,7 @@ describe('HomeScreen', () => {
     expect(apiClient.getMe).toHaveBeenCalledTimes(1);
     expect(hasText(r.root, 'Salut léa !')).toBe(true);
     expect(hasText(r.root, 'L')).toBe(true);
-    expect(hasText(r.root, 'Tes matchs sont sur le web')).toBe(true);
+    expect(hasText(r.root, 'Trouve tes prochains matchs')).toBe(true);
     r.unmount();
   });
 
@@ -74,6 +76,18 @@ describe('HomeScreen', () => {
     expect(cb.onLogout).toHaveBeenCalledTimes(1);
     expect(cb.onNavigateProfile).toHaveBeenCalledTimes(1);
     expect(cb.onNavigateMusic).toHaveBeenCalledTimes(1);
+    r.unmount();
+  });
+
+  it('la carte découverte / matchs navigue', async () => {
+    apiClient.getMe.mockResolvedValue({ user: { first_name: 'Léa' } });
+    const cb = callbacks();
+    const r = await render(<HomeScreen {...cb} />);
+    await flush();
+    await press(control(r.root, 'button', /^Découvrir des profils/));
+    expect(cb.onNavigateDiscover).toHaveBeenCalledTimes(1);
+    await press(control(r.root, 'button', /^Mes matchs/));
+    expect(cb.onNavigateMatches).toHaveBeenCalledTimes(1);
     r.unmount();
   });
 });

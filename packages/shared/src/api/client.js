@@ -26,7 +26,11 @@ class ApiClient {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || `HTTP ${response.status}`);
+      const error = new Error(data.error || `HTTP ${response.status}`);
+      // Permet aux écrans de distinguer 401 (session expirée) / 404 (pas de
+      // profil musical) sans parser le message.
+      error.status = response.status;
+      throw error;
     }
 
     return data;
@@ -46,6 +50,11 @@ class ApiClient {
   saveTracks(tracks) { return this.request('POST', '/api/music/tracks', tracks); }
   getMusicProfile() { return this.request('GET', '/api/music/profile'); }
   getSpotifyStatus() { return this.request('GET', '/api/music/spotify/status'); }
+
+  // Matching
+  getDiscover() { return this.request('GET', '/api/matching/discover'); }
+  likeUser(toUserId) { return this.request('POST', '/api/matching/like', { to_user_id: toUserId }); }
+  getMatches() { return this.request('GET', '/api/matching/matches'); }
 }
 
 const apiClient = new ApiClient();

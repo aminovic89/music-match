@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Linking } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
@@ -8,6 +8,9 @@ import { colors } from './src/theme';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import DiscoverScreen from './src/screens/DiscoverScreen';
+import MatchesScreen from './src/screens/MatchesScreen';
+import TabBar from './src/components/TabBar';
 import ProfileScreen from './src/screens/ProfileScreen';
 import MusicEditScreen from './src/screens/MusicEditScreen';
 import OnboardingNavigator from './src/screens/onboarding/OnboardingNavigator';
@@ -17,7 +20,8 @@ const TOKEN_KEY = 'mm_token';
 // redirection mobile) pour ramener directement l'utilisateur à l'étape Import.
 const ONBOARDING_IMPORT_URL_RE = /^musicmatch:\/\/onboarding-import\?token=(.+)$/;
 
-type Screen = 'loading' | 'login' | 'register' | 'onboarding' | 'home' | 'profile' | 'music';
+type Screen = 'loading' | 'login' | 'register' | 'onboarding' | 'home' | 'discover' | 'matches' | 'profile' | 'music';
+type Tab = 'home' | 'discover' | 'matches';
 type OnboardingInitialStep = 'import' | undefined;
 
 // SecureStore n'a pas d'implémentation sur web (et pourrait échouer sur un
@@ -86,12 +90,12 @@ export default function App() {
     persistToken(newToken);
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     apiClient.setToken(null);
     setToken(null);
     setScreen('login');
     persistToken(null);
-  };
+  }, []);
 
   if (screen === 'loading') {
     return (
@@ -124,12 +128,34 @@ export default function App() {
           onComplete={() => setScreen('home')}
         />
       )}
-      {screen === 'home' && (
-        <HomeScreen
-          onLogout={handleLogout}
-          onNavigateProfile={() => setScreen('profile')}
-          onNavigateMusic={() => setScreen('music')}
-        />
+      {(screen === 'home' || screen === 'discover' || screen === 'matches') && (
+        <View style={styles.flex}>
+          <View style={styles.flex}>
+            {screen === 'home' && (
+              <HomeScreen
+                onLogout={handleLogout}
+                onNavigateProfile={() => setScreen('profile')}
+                onNavigateMusic={() => setScreen('music')}
+                onNavigateDiscover={() => setScreen('discover')}
+                onNavigateMatches={() => setScreen('matches')}
+              />
+            )}
+            {screen === 'discover' && (
+              <DiscoverScreen
+                onNavigateMatches={() => setScreen('matches')}
+                onNavigateMusic={() => setScreen('music')}
+                onUnauthorized={handleLogout}
+              />
+            )}
+            {screen === 'matches' && (
+              <MatchesScreen
+                onNavigateDiscover={() => setScreen('discover')}
+                onUnauthorized={handleLogout}
+              />
+            )}
+          </View>
+          <TabBar current={screen as Tab} onNavigate={(tab: Tab) => setScreen(tab)} />
+        </View>
       )}
       {screen === 'profile' && <ProfileScreen onBack={() => setScreen('home')} />}
       {screen === 'music' && <MusicEditScreen token={token} onBack={() => setScreen('home')} />}
@@ -139,5 +165,6 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1, backgroundColor: colors.background },
   loading: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
 });
