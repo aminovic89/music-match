@@ -6,13 +6,15 @@ import { focusRing } from './Button';
 const inputBase =
   'block w-full min-h-12 rounded-field border border-line-strong bg-surface-2 px-4 text-base text-fg placeholder:text-subtle transition-colors hover:border-muted focus:border-accent-text outline-none focus-visible:ring-2 focus-visible:ring-focus/60 aria-invalid:border-danger';
 
-// Champ texte avec libellé visible, aide (hint) liée via aria-describedby.
+// Champ texte avec libellé visible, aide (hint) et erreur optionnelles liées
+// via aria-describedby (erreur → aria-invalid). Miroir du TextField mobile.
 // text-base (16px) : en dessous, Safari iOS zoome au focus.
-export default function TextField({ label, hint, id, className = '', inputClassName = '', ...inputProps }) {
+export default function TextField({ label, hint, error, id, className = '', inputClassName = '', ...inputProps }) {
   const autoId = useId();
   const inputId = id || autoId;
   const hintId = hint ? `${inputId}-hint` : undefined;
-  const describedBy = [inputProps['aria-describedby'], hintId].filter(Boolean).join(' ') || undefined;
+  const errorId = error ? `${inputId}-error` : undefined;
+  const describedBy = [inputProps['aria-describedby'], errorId, hintId].filter(Boolean).join(' ') || undefined;
 
   return (
     <div className={className}>
@@ -23,8 +25,15 @@ export default function TextField({ label, hint, id, className = '', inputClassN
         id={inputId}
         {...inputProps}
         aria-describedby={describedBy}
+        aria-invalid={error ? true : undefined}
         className={`${inputBase} ${inputClassName}`}
       />
+      {error && (
+        <p id={errorId} className="mt-1.5 text-xs font-medium text-danger">
+          <span aria-hidden="true">! </span>
+          {error}
+        </p>
+      )}
       {hint && (
         <p id={hintId} className="mt-1.5 text-xs text-muted">
           {hint}

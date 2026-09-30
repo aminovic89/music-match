@@ -4,6 +4,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
+import Button, { buttonClasses } from '@/components/Button';
+import Compatibility from '@/components/Compatibility';
+import FormAlert from '@/components/Alert';
+import Icon from '@/components/Icon';
+import { LogoMark } from '@/components/Logo';
+import PageContainer from '@/components/PageContainer';
+import PageHeader from '@/components/PageHeader';
+import { EmptyState, LoadingState } from '@/components/States';
+import TasteChips, { sharedAnnouncement } from '@/components/TasteChips';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -116,115 +125,121 @@ export default function DiscoverPage() {
     setCurrentIndex((i) => i + 1);
   };
 
+  const header = (
+    <PageHeader
+      title="Trouver des matchs"
+      subtitle="Des profils classés par compatibilité musicale"
+    />
+  );
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-        <p className="text-gray-400 text-sm">Chargement des profils...</p>
-      </div>
+      <PageContainer width="sm">
+        {header}
+        <LoadingState label="Chargement des profils..." />
+      </PageContainer>
     );
   }
 
   if (noProfile) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-        <div className="w-full max-w-md text-center">
-          <div className="text-4xl mb-4">🎵</div>
-          <h1 className="text-xl font-semibold text-white mb-2">
-            Complète ton profil musical
-          </h1>
-          <p className="text-gray-400 text-sm mb-8">
-            Importe ta musique pour découvrir des profils compatibles.
-          </p>
-          <Link
-            href="/onboarding"
-            className="inline-block py-3 px-6 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl transition-colors"
-          >
+      <PageContainer width="sm">
+        {header}
+        <EmptyState
+          icon="music"
+          title="Complète ton profil musical"
+          text="Importe ta musique pour découvrir des profils compatibles."
+        >
+          <Link href="/onboarding" className={buttonClasses()}>
             Importer ma musique
           </Link>
-        </div>
-      </div>
+        </EmptyState>
+      </PageContainer>
     );
   }
 
   const candidate = candidates[currentIndex];
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md text-center">
-        {error && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm">
-            {error}
-          </div>
-        )}
+    <PageContainer width="sm">
+      {header}
+      <FormAlert id="discover-error" message={error} className="mb-6" />
 
-        {matchCelebration ? (
-          <div className="p-6 rounded-xl border border-violet-500 bg-violet-500/10">
-            <div className="text-4xl mb-3">🎉</div>
-            <h1 className="text-xl font-semibold text-white mb-6">
+      {matchCelebration ? (
+        <div
+          role="status"
+          className="rounded-card bg-linear-to-br from-accent to-accent-2 p-[2px] shadow-glow"
+        >
+          <div className="flex flex-col items-center gap-5 rounded-[calc(var(--radius-card)-2px)] bg-surface px-6 py-10 text-center sm:px-10">
+            <LogoMark className="size-16" animated />
+            <h2 className="text-2xl font-semibold tracking-tight text-balance text-fg">
               C&apos;est un match avec {matchCelebration.first_name} !
-            </h1>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={dismissCelebration}
-                className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl transition-colors"
-              >
-                Continuer à découvrir
-              </button>
-              <Link
-                href="/matches"
-                className="w-full py-3 border border-gray-700 text-gray-300 rounded-xl hover:border-gray-500 transition-colors"
-              >
+            </h2>
+            <div className="flex w-full max-w-xs flex-col gap-3">
+              <Button onClick={dismissCelebration}>Continuer à découvrir</Button>
+              <Link href="/matches" className={buttonClasses({ variant: 'secondary' })}>
                 Voir mes matchs
               </Link>
             </div>
           </div>
-        ) : candidate ? (
-          <div className="p-6 rounded-xl border border-gray-700 bg-gray-900">
-            <Avatar avatarUrl={candidate.avatar_url} firstName={candidate.first_name} size={64} />
-            <h1 className="text-lg font-semibold text-white mt-3">
-              {candidate.first_name}, {candidate.age}
-            </h1>
-            {candidate.city && (
-              <p className="text-gray-400 text-sm">{candidate.city}</p>
-            )}
-            <p className="text-violet-400 text-sm font-medium mt-1 mb-6">
-              {Math.round(candidate.score * 100)}% compatible
+        </div>
+      ) : candidate ? (
+        <article aria-labelledby="candidate-name" className="relative pt-3">
+          {/* Cartes "fantômes" derrière : la pile de profils à venir */}
+          {candidates.length - currentIndex > 1 && (
+            <div aria-hidden="true" className="absolute inset-x-6 top-0 bottom-8 rounded-card border border-line bg-surface/60" />
+          )}
+          {/* Mobile : avatar à côté du nom pour garder Passer / Liker visibles
+              sans scroll sur un écran 375×667 ; à partir de sm, mise en page
+              centrée avec grand avatar. */}
+          <div className="relative rounded-card border border-line bg-surface p-5 shadow-card sm:p-8">
+            <p className="mb-3 text-center text-xs font-medium text-muted sm:mb-4">
+              Profil {currentIndex + 1} sur {candidates.length}
             </p>
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={handlePass}
-                disabled={liking}
-                className="px-6 py-3 border border-gray-700 text-gray-300 rounded-xl hover:border-gray-500 disabled:opacity-50 transition-colors"
-              >
-                ⏭️ Passer
-              </button>
-              <button
-                onClick={handleLike}
-                disabled={liking}
-                className="px-6 py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-medium rounded-xl transition-colors"
-              >
-                {liking ? '...' : '❤️ Liker'}
-              </button>
+            <div className="flex items-center gap-4 sm:flex-col sm:gap-3 sm:text-center">
+              <Avatar avatarUrl={candidate.avatar_url} firstName={candidate.first_name} size={72} ring className="sm:hidden" />
+              <Avatar avatarUrl={candidate.avatar_url} firstName={candidate.first_name} size={112} ring className="hidden sm:block" />
+              <div className="min-w-0">
+                <h2 id="candidate-name" className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">
+                  {candidate.first_name}, {candidate.age}
+                </h2>
+                {candidate.city && <p className="mt-0.5 truncate text-sm text-muted sm:mt-1">{candidate.city}</p>}
+              </div>
+            </div>
+
+            <Compatibility score={candidate.score} className="mt-5 sm:mt-6" />
+
+            <TasteChips candidate={candidate} className="mt-5" />
+
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8">
+              <Button variant="secondary" onClick={handlePass} disabled={liking}>
+                <Icon name="x" />
+                Passer
+              </Button>
+              <Button onClick={handleLike} loading={liking}>
+                {!liking && <Icon name="heart" />}
+                Liker
+              </Button>
             </div>
           </div>
-        ) : (
-          <div>
-            <div className="text-4xl mb-4">🔍</div>
-            <h1 className="text-lg font-semibold text-white mb-2">
-              Plus de profils pour l&apos;instant
-            </h1>
-            <p className="text-gray-400 text-sm mb-8">
-              Reviens plus tard, de nouveaux profils arrivent régulièrement.
-            </p>
-            <button
-              onClick={handleRefresh}
-              className="py-3 px-6 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl transition-colors"
-            >
-              🔄 Rafraîchir
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+          {/* Annonce le changement de profil aux lecteurs d'écran */}
+          <p className="sr-only" aria-live="polite">
+            {candidate.first_name}, {candidate.age} ans, {Math.round(candidate.score * 100)}% compatible
+            {sharedAnnouncement(candidate) ? `, ${sharedAnnouncement(candidate)}` : ''}
+          </p>
+        </article>
+      ) : (
+        <EmptyState
+          icon="compass"
+          title="Plus de profils pour l'instant"
+          text="Reviens plus tard, de nouveaux profils arrivent régulièrement."
+        >
+          <Button onClick={handleRefresh}>
+            <Icon name="refresh" />
+            Rafraîchir
+          </Button>
+        </EmptyState>
+      )}
+    </PageContainer>
   );
 }

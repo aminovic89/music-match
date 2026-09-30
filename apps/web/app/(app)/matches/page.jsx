@@ -4,6 +4,21 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
+import { buttonClasses } from '@/components/Button';
+import FormAlert from '@/components/Alert';
+import Icon from '@/components/Icon';
+import PageContainer from '@/components/PageContainer';
+import PageHeader from '@/components/PageHeader';
+import { EmptyState, LoadingState } from '@/components/States';
+
+// Dates de match / d'expiration (données déjà renvoyées par l'API).
+const formatDate = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? null
+    : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+};
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -37,56 +52,70 @@ export default function MatchesPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <h1 className="text-2xl font-semibold text-white text-center mb-6">
-          Mes matchs{!loading ? ` (${matches.length})` : ''} 💜
-        </h1>
+    <PageContainer width="sm">
+      <PageHeader
+        title="Mes matchs"
+        subtitle="Les personnes avec qui le like est réciproque"
+        right={
+          !loading && matches.length > 0 ? (
+            <span className="rounded-full border border-line bg-surface px-3 py-1 text-sm font-semibold tabular-nums text-fg">
+              {matches.length}
+              <span className="sr-only"> match{matches.length > 1 ? 's' : ''}</span>
+            </span>
+          ) : null
+        }
+      />
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm text-center">
-            {error}
-          </div>
-        )}
+      <FormAlert id="matches-error" message={error} className="mb-6" />
 
-        {loading ? (
-          <p className="text-gray-400 text-sm text-center">Chargement...</p>
-        ) : matches.length === 0 ? (
-          <div className="text-center">
-            <p className="text-gray-400 text-sm mb-6">
-              Pas encore de match — va chercher des matchs !
-            </p>
-            <Link
-              href="/discover"
-              className="inline-block py-3 px-6 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl transition-colors"
-            >
+      {loading ? (
+        <LoadingState label="Chargement..." />
+      ) : matches.length === 0 ? (
+        !error && (
+          <EmptyState
+            icon="heart"
+            title="Pas encore de match"
+            text="Like des profils : quand c'est réciproque, ils apparaissent ici."
+          >
+            <Link href="/discover" className={buttonClasses()}>
+              <Icon name="compass" />
               Trouver des matchs
             </Link>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {matches.map((match) => (
-              <div
+          </EmptyState>
+        )
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {matches.map((match) => {
+            const pct = Math.round(match.score * 100);
+            const matchedOn = formatDate(match.matched_at);
+            const expiresOn = formatDate(match.expires_at);
+            return (
+              <li
                 key={match.id}
-                className="p-4 rounded-xl border border-gray-700 bg-gray-900 flex items-center gap-4"
+                className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-card"
               >
-                <Avatar avatarUrl={match.avatar_url} firstName={match.first_name} size={48} />
-                <div className="flex-1 text-left">
-                  <div className="text-white font-medium">
+                <Avatar avatarUrl={match.avatar_url} firstName={match.first_name} size={56} ring />
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <p className="truncate text-base font-semibold text-fg">
                     {match.first_name}, {match.age}
-                  </div>
-                  {match.city && (
-                    <div className="text-gray-400 text-sm">{match.city}</div>
+                  </p>
+                  {match.city && <p className="truncate text-sm text-muted">{match.city}</p>}
+                  {(matchedOn || expiresOn) && (
+                    <p className="text-xs text-muted">
+                      {matchedOn && <>Match le {matchedOn}</>}
+                      {matchedOn && expiresOn && ' · '}
+                      {expiresOn && <>expire le {expiresOn}</>}
+                    </p>
                   )}
                 </div>
-                <div className="text-violet-400 text-sm font-medium">
-                  {Math.round(match.score * 100)}%
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+                <span className="shrink-0 rounded-full border border-accent/45 bg-accent/15 px-3 py-1 text-sm font-semibold tabular-nums text-accent-text">
+                  {pct}%<span className="sr-only"> compatible</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </PageContainer>
   );
 }

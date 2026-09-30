@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ImportStep from '@/components/onboarding/ImportStep';
 import DnaStep from '@/components/onboarding/DnaStep';
+import FormAlert from '@/components/Alert';
+import PageContainer from '@/components/PageContainer';
+import PageHeader from '@/components/PageHeader';
+import { LoadingState } from '@/components/States';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const STEPS = { IMPORT: 0, DNA: 1 };
@@ -65,38 +69,43 @@ export default function MusicPage() {
     }
   };
 
+  // En-tête commun : on modifie sa musique (pas un nouvel onboarding).
+  const header = <PageHeader title="Modifier ma musique" backHref="/home" className="mb-8" />;
+
   if (!ready) {
-    return <div className="min-h-screen bg-gray-950" />;
+    return (
+      <PageContainer width="sm">
+        {header}
+        <LoadingState label="Chargement de ta musique…" />
+      </PageContainer>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {error && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm text-center">
-            {error}
-          </div>
-        )}
+    <PageContainer width="sm">
+      {header}
+      <FormAlert id="music-error" message={error} className="mb-6" />
 
-        {step === STEPS.IMPORT && (
-          <ImportStep
-            token={token}
-            selected={selectedTracks}
-            onSelectedChange={setSelectedTracks}
-            onSubmit={handleTracksSubmit}
-            onBack={() => router.push('/home')}
-            loading={loading}
-          />
-        )}
+      {step === STEPS.IMPORT && (
+        <ImportStep
+          titleAs="h2"
+          token={token}
+          selected={selectedTracks}
+          onSelectedChange={setSelectedTracks}
+          onSubmit={handleTracksSubmit}
+          onBack={() => router.push('/home')}
+          loading={loading}
+        />
+      )}
 
-        {step === STEPS.DNA && (
-          <DnaStep
-            profile={musicProfile}
-            onComplete={() => router.push('/home')}
-            onBack={() => setStep(STEPS.IMPORT)}
-          />
-        )}
-      </div>
-    </div>
+      {step === STEPS.DNA && (
+        <DnaStep
+          titleAs="h2"
+          profile={musicProfile}
+          onComplete={() => router.push('/home')}
+          onBack={() => setStep(STEPS.IMPORT)}
+        />
+      )}
+    </PageContainer>
   );
 }

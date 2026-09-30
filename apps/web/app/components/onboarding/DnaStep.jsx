@@ -1,15 +1,13 @@
 'use client';
 
-const MOODS_LABELS = {
-  energetic: { label: 'Énergique', emoji: '⚡' },
-  chill: { label: 'Chill', emoji: '😌' },
-  happy: { label: 'Joyeux', emoji: '😊' },
-  melancholic: { label: 'Mélancolique', emoji: '🌙' },
-  danceable: { label: 'Dansant', emoji: '💃' },
-  intense: { label: 'Intense', emoji: '🔥' },
-  romantic: { label: 'Romantique', emoji: '🌹' },
-  neutral: { label: 'Neutre', emoji: '🎵' },
-};
+import Button from '../Button';
+import Card from '../Card';
+import Chip from '../Chip';
+import Section from '../Section';
+import StickyBar from '../StickyBar';
+import { EmptyState } from '../States';
+import { moodInfo } from '../moods';
+
 
 // Mêmes seuils que deriveMoods (apps/api/src/services/spotify.js), pour que
 // la légende reste cohérente avec les moods affichés juste en dessous.
@@ -31,122 +29,125 @@ function tempoLabel(bpm) {
   return 'tempo modéré';
 }
 
+// Barre de métrique : libellé + valeur sur une ligne, barre pleine largeur
+// dessous, légende en texte (plus de largeurs/décalages fixes qui
+// cassaient avec une grande taille de police).
 function MetricBar({ label, value, caption }) {
   const pct = Math.round((value || 0) * 100);
   return (
-    <div>
-      <div className="flex items-center gap-3">
-        <span className="text-gray-400 text-xs w-20 flex-shrink-0">{label}</span>
-        <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
-          <div
-            className="h-2 bg-violet-500 rounded-full transition-all duration-700"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <span className="text-gray-400 text-xs w-8 text-right">{pct}</span>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="text-sm font-medium text-fg">{label}</span>
+        <span className="text-sm tabular-nums text-muted">
+          {pct}<span className="sr-only"> sur 100</span>
+        </span>
       </div>
-      {caption && <p className="text-gray-500 text-xs ml-[92px] mt-1">{caption}</p>}
+      <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-surface-2">
+        <div
+          className="h-full rounded-full bg-linear-to-r from-accent to-accent-2 motion-safe:transition-[width] motion-safe:duration-700"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {caption && <p className="text-xs text-muted">{caption}</p>}
     </div>
   );
 }
 
-export default function DnaStep({ profile, onComplete, onBack }) {
+export default function DnaStep({ titleAs: Title = 'h1', profile, onComplete, onBack }) {
   if (!profile) {
     return (
-      <div className="text-center text-gray-400 py-12">
-        <div className="text-4xl mb-4">🎵</div>
-        <p>Profil musical non disponible</p>
-        <button onClick={onBack} className="mt-4 text-violet-400 text-sm underline">
+      <EmptyState title="Profil musical non disponible" headingLevel={Title}>
+        <Button variant="secondary" onClick={onBack}>
           Retour
-        </button>
-      </div>
+        </Button>
+      </EmptyState>
     );
   }
 
   return (
-    <div className="flex flex-col">
-      <h1 className="text-2xl font-semibold text-white text-center mb-2">
-        Ton ADN musical 🎵
-      </h1>
-      <p className="text-gray-400 text-center text-sm mb-8">
-        Voilà ce qu&apos;on a trouvé à partir de tes titres
-      </p>
+    <div className="flex flex-1 flex-col">
+      <div className="mb-8 flex flex-col gap-2">
+        <Title className="text-2xl font-semibold tracking-tight text-fg sm:text-3xl">Ton ADN musical</Title>
+        <p className="text-base text-muted">Voilà ce qu&apos;on a trouvé à partir de tes titres</p>
+      </div>
 
-      {/* Métriques — seulement si on a de vraies audio features (titres
-          importés via Spotify) ; les titres Deezer/manuels n'en ont pas. */}
-      {profile.avg_energy != null && (
-        <div className="bg-gray-900 rounded-xl p-5 mb-4 border border-gray-800">
-          <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-4">Audio</h3>
-          <div className="flex flex-col gap-3">
-            <MetricBar
-              label="Énergie"
-              value={profile.avg_energy}
-              caption={energyLabel(Math.round(profile.avg_energy * 100))}
-            />
-            <MetricBar
-              label="Positivité"
-              value={profile.avg_valence}
-              caption={valenceLabel(Math.round(profile.avg_valence * 100))}
-            />
-            <div>
-              <div className="flex items-center gap-3">
-                <span className="text-gray-400 text-xs w-20 flex-shrink-0">BPM moy.</span>
-                <div className="flex-1" />
-                <span className="text-white font-medium text-sm">{Math.round(profile.avg_tempo)}</span>
+      <div className="flex flex-col gap-4">
+        {/* Métriques — seulement si on a de vraies audio features (titres
+            importés via Spotify) ; les titres Deezer/manuels n'en ont pas. */}
+        {profile.avg_energy != null && (
+          <Card className="sm:p-6">
+            <Section title="Audio">
+              <div className="flex flex-col gap-4">
+                <MetricBar
+                  label="Énergie"
+                  value={profile.avg_energy}
+                  caption={energyLabel(Math.round(profile.avg_energy * 100))}
+                />
+                <MetricBar
+                  label="Positivité"
+                  value={profile.avg_valence}
+                  caption={valenceLabel(Math.round(profile.avg_valence * 100))}
+                />
+                <div className="flex flex-col gap-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-sm font-medium text-fg">BPM moy.</span>
+                    <span className="text-base font-semibold tabular-nums text-fg">{Math.round(profile.avg_tempo)}</span>
+                  </div>
+                  <p className="text-xs text-muted">{tempoLabel(Math.round(profile.avg_tempo))}</p>
+                </div>
               </div>
-              <p className="text-gray-500 text-xs ml-[92px] mt-1">{tempoLabel(Math.round(profile.avg_tempo))}</p>
-            </div>
-          </div>
+            </Section>
+          </Card>
+        )}
+
+        {/* Artistes */}
+        {profile.top_artists?.length > 0 && (
+          <Card className="sm:p-6">
+            <Section title="Artistes dominants">
+              <ul className="flex flex-wrap gap-2">
+                {profile.top_artists.map((artist) => (
+                  <li key={artist}>
+                    <Chip tone="accent">{artist}</Chip>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          </Card>
+        )}
+
+        {/* Moods */}
+        {profile.top_moods?.length > 0 && (
+          <Card className="sm:p-6">
+            <Section title="Tes moods">
+              <ul className="flex flex-wrap gap-2">
+                {profile.top_moods.map((mood) => {
+                  const info = moodInfo(mood);
+                  return (
+                    <li key={mood}>
+                      <Chip tone="accent2">
+                        <span aria-hidden="true">{info.emoji}&nbsp;</span>
+                        {info.label}
+                      </Chip>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Section>
+          </Card>
+        )}
+      </div>
+
+      <div className="flex-1" />
+      <StickyBar>
+        <div className="flex flex-col gap-1 sm:flex-row-reverse sm:gap-3">
+          <Button onClick={onComplete} className="sm:flex-[2]">
+            Voir mes matchs
+          </Button>
+          <Button variant="ghost" onClick={onBack} className="sm:flex-1">
+            Modifier mes titres
+          </Button>
         </div>
-      )}
-
-      {/* Artistes */}
-      {profile.top_artists?.length > 0 && (
-        <div className="bg-gray-900 rounded-xl p-5 mb-4 border border-gray-800">
-          <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-3">Artistes dominants</h3>
-          <div className="flex flex-wrap gap-2">
-            {profile.top_artists.map((artist) => (
-              <span
-                key={artist}
-                className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-full text-xs border border-violet-500/30"
-              >
-                {artist}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Moods */}
-      {profile.top_moods?.length > 0 && (
-        <div className="bg-gray-900 rounded-xl p-5 mb-6 border border-gray-800">
-          <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-3">Tes moods</h3>
-          <div className="flex flex-wrap gap-2">
-            {profile.top_moods.map((mood) => {
-              const info = MOODS_LABELS[mood] || { label: mood, emoji: '🎵' };
-              return (
-                <span
-                  key={mood}
-                  className="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-xs border border-emerald-500/30"
-                >
-                  {info.emoji} {info.label}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <button
-        onClick={onComplete}
-        className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl transition-colors"
-      >
-        Voir mes matchs →
-      </button>
-
-      <button onClick={onBack} className="mt-3 text-gray-500 text-sm text-center hover:text-gray-300 transition-colors">
-        ← Modifier mes titres
-      </button>
+      </StickyBar>
     </div>
   );
 }
