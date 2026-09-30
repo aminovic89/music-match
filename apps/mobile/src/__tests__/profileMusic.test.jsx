@@ -136,4 +136,60 @@ describe('MusicEditScreen', () => {
     expect(onBack).toHaveBeenCalled();
     r.unmount();
   });
+
+  describe('suppression de titres', () => {
+    const spotifyTracks = Array.from({ length: 12 }, (_, i) => ({
+      track_id: `sp${i}`, track_name: `Spotify ${i}`, artist_name: `Artiste ${i}`, source: 'spotify',
+    }));
+
+    // Spotify est connecté : /top-tracks renvoie les mêmes titres (+ un nouveau).
+    const mockSpotifyConnected = () => {
+      const topTracks = [...spotifyTracks, { track_id: 'sp-new', track_name: 'Nouveau', artist_name: 'X', source: 'spotify' }];
+      global.fetch = jest.fn((url) => {
+        const data = url.includes('/spotify/status')
+          ? { connected: true }
+          : url.includes('/spotify/top-tracks') ? { tracks: topTracks } : {};
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(data) });
+      });
+    };
+
+    it("un titre retiré n'est pas réimporté depuis Spotify et disparaît du payload", async () => {
+      mockSpotifyConnected();
+      apiClient.getMusicProfile.mockResolvedValue({ tracks: spotifyTracks });
+      apiClient.saveTracks.mockResolvedValue({ profile: { top_artists: [] } });
+      const r = await render(<MusicEditScreen token="tok" onBack={() => {}} />);
+      await flush();
+      await flush();
+
+      // Aucun import automatique : la sélection reste celle du profil enregistré.
+      expect(control(r.root, 'button', 'Analyser (12)')).toBeTruthy();
+
+      await press(control(r.root, 'button', 'Retirer Spotify 0'));
+      await press(control(r.root, 'button', 'Retirer Spotify 1'));
+      await flush();
+      await press(control(r.root, 'button', 'Analyser (10)'));
+      await flush();
+
+      const payload = apiClient.saveTracks.mock.calls[0][0];
+      expect(payload.map((t) => t.track_id)).toEqual(spotifyTracks.slice(2).map((t) => t.track_id));
+      r.unmount();
+    });
+
+    it("le retour depuis l'ADN ne réimporte pas les titres retirés", async () => {
+      mockSpotifyConnected();
+      apiClient.getMusicProfile.mockResolvedValue({ tracks: spotifyTracks });
+      apiClient.saveTracks.mockResolvedValue({ profile: { top_artists: [] } });
+      const r = await render(<MusicEditScreen token="tok" onBack={() => {}} />);
+      await flush();
+      await press(control(r.root, 'button', 'Retirer Spotify 0'));
+      await press(control(r.root, 'button', 'Retirer Spotify 1'));
+      await press(control(r.root, 'button', 'Analyser (10)'));
+      await flush();
+      await press(control(r.root, 'button', 'Modifier mes titres'));
+      await flush();
+      await flush();
+      expect(control(r.root, 'button', 'Analyser (10)')).toBeTruthy();
+      r.unmount();
+    });
+  });
 });

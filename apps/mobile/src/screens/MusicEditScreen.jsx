@@ -69,6 +69,7 @@ export default function MusicEditScreen({ token, onBack }) {
           token={token}
           selected={selectedTracks}
           onSelectedChange={setSelectedTracks}
+          autoImportSpotify={false}
           onSubmit={handleTracksSubmit}
           onBack={onBack}
           loading={loading}
