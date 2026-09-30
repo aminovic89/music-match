@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Linking } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { apiClient } from '@music-match/shared';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
@@ -99,8 +100,10 @@ export default function App() {
     );
   }
 
+  // SafeAreaProvider : requis par useSafeAreaInsets (écrans auth, cf.
+  // src/components/AuthScreen.jsx).
   return (
-    <>
+    <SafeAreaProvider>
       {screen === 'login' && (
         <LoginScreen
           onSuccess={handleLoginSuccess}
@@ -130,7 +133,7 @@ export default function App() {
       {screen === 'profile' && <ProfileScreen onBack={() => setScreen('home')} />}
       {screen === 'music' && <MusicEditScreen token={token} onBack={() => setScreen('home')} />}
       <StatusBar style="light" />
-    </>
+    </SafeAreaProvider>
   );
 }
 

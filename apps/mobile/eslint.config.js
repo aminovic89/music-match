@@ -18,5 +18,10 @@ module.exports = [
     files: ['eslint.config.js', 'babel.config.js'],
     languageOptions: { globals: { ...globals.node } },
   },
+  {
+    // Globals Jest (describe/it/expect/jest) dans les tests.
+    files: ['**/__tests__/**', '**/*.test.{js,jsx,ts,tsx}'],
+    languageOptions: { globals: { ...globals.jest } },
+  },
   { ignores: ['.expo/**', 'node_modules/**'] },
 ];
