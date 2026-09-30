@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import BackgroundGlow from './components/BackgroundGlow';
@@ -24,21 +24,26 @@ const STEPS = [
   },
 ];
 
+type AuthState = 'pending' | 'authenticated' | 'guest';
+
+const subscribe = (onChange: () => void) => {
+  window.addEventListener('storage', onChange);
+  return () => window.removeEventListener('storage', onChange);
+};
+const getSnapshot = (): AuthState =>
+  localStorage.getItem('mm_token') ? 'authenticated' : 'guest';
+const getServerSnapshot = (): AuthState => 'pending';
+
 export default function Home() {
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
+  const auth = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   useEffect(() => {
-    const token = localStorage.getItem('mm_token');
-    if (token) {
-      router.replace('/home');
-    } else {
-      setChecked(true);
-    }
-  }, [router]);
+    if (auth === 'authenticated') router.replace('/home');
+  }, [auth, router]);
 
-  // Pendant la vérification du token : logo animé plutôt qu'un écran vide.
-  if (!checked) {
+  // Pendant la vérification du token (ou la redirection vers /home) : logo animé plutôt qu'un écran vide.
+  if (auth !== 'guest') {
     return (
       <div role="status" className="flex min-h-dvh flex-1 items-center justify-center bg-background">
         <LogoMark className="size-14" animated />

@@ -47,7 +47,7 @@ export default function ImportStep({ token, selected, onSelectedChange, onSubmit
           return merged;
         });
       }
-    } catch (_e) {}
+    } catch {}
     finally { setImportingSpotify(false); }
   }, [token, onSelectedChange]);
 
@@ -80,7 +80,7 @@ export default function ImportStep({ token, selected, onSelectedChange, onSubmit
       );
       const data = await res.json();
       if (res.ok) setManualSuggestions(data.tracks || []);
-    } catch (_e) {}
+    } catch {}
     finally { setManualSearching(false); }
   }, [token]);
 
