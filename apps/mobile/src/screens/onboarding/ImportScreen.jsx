@@ -31,7 +31,10 @@ function isDuplicate(list, track) {
   );
 }
 
-export default function ImportScreen({ header, token, selected, onSelectedChange, onSubmit, onBack, loading, error, autoImportSpotify = true }) {
+export default function ImportScreen({
+  header, token, selected, onSelectedChange, onSubmit, onBack, loading, error,
+  autoImportSpotify = true, backLabel = 'Retour', focusManualInput = false,
+}) {
   const [spotifyConnected, setSpotifyConnected] = useState(false);
   const [importingSpotify, setImportingSpotify] = useState(false);
   const [manualName, setManualName] = useState('');
@@ -39,6 +42,8 @@ export default function ImportScreen({ header, token, selected, onSelectedChange
   const [manualSuggestions, setManualSuggestions] = useState([]);
   const [manualSearching, setManualSearching] = useState(false);
   const [belowMinAttempted, setBelowMinAttempted] = useState(false);
+  // Titre en cours de modification (un seul à la fois)
+  const [editingId, setEditingId] = useState(null);
   const hasImportedSpotify = useRef(false);
   // Sélection vide à l'arrivée sur l'écran ? (valeur initiale uniquement)
   const startedEmpty = useRef(selected.length === 0);
@@ -126,7 +131,32 @@ export default function ImportScreen({ header, token, selected, onSelectedChange
   };
 
   const removeTrack = (trackId) => {
+    if (editingId === trackId) setEditingId(null);
     onSelectedChange((prev) => prev.filter((t) => t.track_id !== trackId));
+  };
+
+  // Renvoie un message d'erreur si la modification crée un doublon.
+  const updateTrack = (trackId, name, artist) => {
+    const original = selected.find((t) => t.track_id === trackId);
+    if (!original) { setEditingId(null); return null; }
+    if (normalize(name) === normalize(original.track_name) &&
+        normalize(artist) === normalize(original.artist_name)) {
+      setEditingId(null);
+      return null;
+    }
+    // Titre/artiste modifiés : ce n'est plus le titre Spotify/Deezer
+    // d'origine, il devient une saisie manuelle.
+    const updated = {
+      track_id: generateManualId(),
+      track_name: name.trim(),
+      artist_name: artist.trim(),
+      source: 'manual',
+    };
+    const others = selected.filter((t) => t.track_id !== trackId);
+    if (isDuplicate(others, updated)) return 'Ce titre est déjà dans ta liste';
+    onSelectedChange((prev) => prev.map((t) => (t.track_id === trackId ? updated : t)));
+    setEditingId(null);
+    return null;
   };
 
   const handleSubmitPress = () => {
@@ -167,7 +197,7 @@ export default function ImportScreen({ header, token, selected, onSelectedChange
             </Text>
           ) : null}
           <View style={styles.actions}>
-            <Button title="Retour" variant="secondary" onPress={onBack} style={styles.backBtn} />
+            <Button title={backLabel} variant="secondary" onPress={onBack} style={styles.backBtn} />
             <Button
               title={`Analyser (${selected.length})`}
               onPress={handleSubmitPress}
@@ -222,6 +252,7 @@ export default function ImportScreen({ header, token, selected, onSelectedChange
             placeholder="Ex. Tout oublier"
             returnKeyType="next"
             autoCorrect={false}
+            autoFocus={focusManualInput}
           />
           <TextField
             label="Artiste"
@@ -285,22 +316,73 @@ export default function ImportScreen({ header, token, selected, onSelectedChange
             </View>
           ) : (
             <View style={styles.list}>
-              {selected.map((item) => (
+              {selected.map((item) => (item.track_id === editingId ? (
+                <TrackEditor
+                  key={item.track_id}
+                  track={item}
+                  onSave={(name, artist) => updateTrack(item.track_id, name, artist)}
+                  onCancel={() => setEditingId(null)}
+                />
+              ) : (
                 <View key={item.track_id} style={[styles.row, styles.rowSelected]}>
                   <TrackGlyph glyph={item.source === 'manual' ? '✎' : '♪'} />
                   <TrackInfo name={item.track_name} artist={item.artist_name} />
+                  <IconButton
+                    glyph="✎"
+                    accessibilityLabel={`Modifier ${item.track_name}`}
+                    onPress={() => setEditingId(item.track_id)}
+                  />
                   <IconButton
                     glyph="✕"
                     accessibilityLabel={`Retirer ${item.track_name}`}
                     onPress={() => removeTrack(item.track_id)}
                   />
                 </View>
-              ))}
+              )))}
             </View>
           )}
         </Section>
       </View>
     </Screen>
+  );
+}
+
+// Formulaire de modification en place d'un titre sélectionné.
+function TrackEditor({ track, onSave, onCancel }) {
+  const [name, setName] = useState(track.track_name || '');
+  const [artist, setArtist] = useState(track.artist_name || '');
+  const [editError, setEditError] = useState(null);
+  useAnnounce(editError);
+
+  const save = () => {
+    if (!name.trim()) return;
+    setEditError(onSave(name, artist));
+  };
+
+  return (
+    <View style={styles.editor}>
+      <TextField
+        label="Titre"
+        value={name}
+        onChangeText={(v) => { setName(v); setEditError(null); }}
+        autoFocus
+        autoCorrect={false}
+        returnKeyType="next"
+        error={!name.trim() ? 'Obligatoire' : editError || undefined}
+      />
+      <TextField
+        label="Artiste"
+        value={artist}
+        onChangeText={(v) => { setArtist(v); setEditError(null); }}
+        autoCorrect={false}
+        returnKeyType="done"
+        onSubmitEditing={save}
+      />
+      <View style={styles.editorActions}>
+        <Button title="Annuler" variant="ghost" onPress={onCancel} style={styles.editorBtn} />
+        <Button title="Valider" onPress={save} disabled={!name.trim()} style={styles.editorBtn} />
+      </View>
+    </View>
   );
 }
 
@@ -368,6 +450,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   rowSelected: { borderColor: colors.accentLine },
+  editor: {
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.field,
+    borderWidth: 1,
+    borderColor: colors.accentText,
+    backgroundColor: colors.surface,
+  },
+  editorActions: { flexDirection: 'row', gap: spacing.md },
+  editorBtn: { flex: 1, paddingHorizontal: spacing.md },
   trackGlyph: {
     width: 32,
     height: 32,

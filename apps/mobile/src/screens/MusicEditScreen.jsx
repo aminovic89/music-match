@@ -8,10 +8,24 @@ import { colors, spacing, typography } from '../theme';
 
 const STEPS = { IMPORT: 0, DNA: 1 };
 
+function toSelection(tracks) {
+  return (tracks || []).map((t) => ({
+    track_id: t.track_id,
+    track_name: t.track_name,
+    artist_name: t.artist_name,
+    source: t.source,
+  }));
+}
+
 export default function MusicEditScreen({ token, onBack }) {
   const [step, setStep] = useState(STEPS.IMPORT);
   const [selectedTracks, setSelectedTracks] = useState([]);
+  // Titres tels qu'enregistrés : restaurés si l'utilisateur annule ses
+  // modifications et revient à la synthèse sans relancer l'analyse.
+  const [savedTracks, setSavedTracks] = useState([]);
   const [musicProfile, setMusicProfile] = useState(null);
+  const [focusAdd, setFocusAdd] = useState(false);
+  const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
@@ -19,14 +33,15 @@ export default function MusicEditScreen({ token, onBack }) {
   useEffect(() => {
     apiClient.getMusicProfile()
       .then((data) => {
-        setSelectedTracks(
-          (data.tracks || []).map((t) => ({
-            track_id: t.track_id,
-            track_name: t.track_name,
-            artist_name: t.artist_name,
-            source: t.source,
-          }))
-        );
+        const tracks = toSelection(data.tracks);
+        setSelectedTracks(tracks);
+        setSavedTracks(tracks);
+        // Profil déjà analysé : on affiche sa synthèse plutôt que la liste
+        // des titres, l'édition reste accessible depuis la synthèse.
+        if (data.profile) {
+          setMusicProfile(data.profile);
+          setStep(STEPS.DNA);
+        }
       })
       .catch(() => {}) // pas encore de profil musical — on démarre à vide
       .finally(() => setReady(true));
@@ -37,13 +52,28 @@ export default function MusicEditScreen({ token, onBack }) {
     setError(null);
     try {
       const data = await apiClient.saveTracks(tracks);
-      setMusicProfile(data.profile);
+      setMusicProfile({ ...data.profile, tracks_count: tracks.length });
+      setSavedTracks(tracks);
+      setNotice('Profil musical mis à jour');
       setStep(STEPS.DNA);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const openEditor = (withFocus) => {
+    setFocusAdd(withFocus);
+    setNotice(null);
+    setError(null);
+    setStep(STEPS.IMPORT);
+  };
+
+  const cancelEdit = () => {
+    setSelectedTracks(savedTracks);
+    setError(null);
+    setStep(STEPS.DNA);
   };
 
   // En-tête commun aux deux étapes : l'utilisateur sait qu'il modifie sa
@@ -71,7 +101,10 @@ export default function MusicEditScreen({ token, onBack }) {
           onSelectedChange={setSelectedTracks}
           autoImportSpotify={false}
           onSubmit={handleTracksSubmit}
-          onBack={onBack}
+          // Avec un profil existant, "Annuler" ramène à la synthèse.
+          onBack={musicProfile ? cancelEdit : onBack}
+          backLabel={musicProfile ? 'Annuler' : 'Retour'}
+          focusManualInput={focusAdd}
           loading={loading}
           error={error}
         />
@@ -81,8 +114,10 @@ export default function MusicEditScreen({ token, onBack }) {
         <DnaScreen
           header={header}
           profile={musicProfile}
-          onComplete={onBack}
-          onBack={() => setStep(STEPS.IMPORT)}
+          notice={notice}
+          onAddTracks={() => openEditor(true)}
+          onEditTracks={() => openEditor(false)}
+          onBack={() => openEditor(false)}
         />
       )}
     </View>

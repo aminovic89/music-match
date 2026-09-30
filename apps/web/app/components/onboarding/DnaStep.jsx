@@ -4,6 +4,7 @@ import Button from '../Button';
 import Card from '../Card';
 import Chip from '../Chip';
 import Section from '../Section';
+import FormAlert from '../Alert';
 import StickyBar from '../StickyBar';
 import { EmptyState } from '../States';
 import { moodInfo } from '../moods';
@@ -53,7 +54,12 @@ function MetricBar({ label, value, caption }) {
   );
 }
 
-export default function DnaStep({ titleAs: Title = 'h1', profile, onComplete, onBack }) {
+// En édition (onAddTracks/onEditTracks fournis), l'étape sert de synthèse du
+// profil déjà analysé : les actions proposent de compléter ou corriger les
+// titres plutôt que de continuer l'onboarding.
+export default function DnaStep({
+  titleAs: Title = 'h1', profile, onComplete, onBack, onAddTracks, onEditTracks, notice,
+}) {
   if (!profile) {
     return (
       <EmptyState title="Profil musical non disponible" headingLevel={Title}>
@@ -68,8 +74,14 @@ export default function DnaStep({ titleAs: Title = 'h1', profile, onComplete, on
     <div className="flex flex-1 flex-col">
       <div className="mb-8 flex flex-col gap-2">
         <Title className="text-2xl font-semibold tracking-tight text-fg sm:text-3xl">Ton ADN musical</Title>
-        <p className="text-base text-muted">Voilà ce qu&apos;on a trouvé à partir de tes titres</p>
+        <p className="text-base text-muted">
+          {profile.tracks_count
+            ? `Synthèse de l'analyse de tes ${profile.tracks_count} titres`
+            : "Voilà ce qu'on a trouvé à partir de tes titres"}
+        </p>
       </div>
+
+      <FormAlert tone="success" message={notice} className="mb-6" />
 
       <div className="flex flex-col gap-4">
         {/* Métriques — seulement si on a de vraies audio features (titres
@@ -139,14 +151,25 @@ export default function DnaStep({ titleAs: Title = 'h1', profile, onComplete, on
 
       <div className="flex-1" />
       <StickyBar>
-        <div className="flex flex-col gap-1 sm:flex-row-reverse sm:gap-3">
-          <Button onClick={onComplete} className="sm:flex-[2]">
-            Voir mes matchs
-          </Button>
-          <Button variant="ghost" onClick={onBack} className="sm:flex-1">
-            Modifier mes titres
-          </Button>
-        </div>
+        {onEditTracks ? (
+          <div className="flex flex-col gap-1 sm:flex-row-reverse sm:gap-3">
+            <Button onClick={onAddTracks} fullWidth={false} className="w-full sm:w-auto sm:flex-none sm:px-6">
+              Ajouter des titres
+            </Button>
+            <Button variant="ghost" onClick={onEditTracks} className="sm:flex-1">
+              Modifier ou supprimer mes titres
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1 sm:flex-row-reverse sm:gap-3">
+            <Button onClick={onComplete} className="sm:flex-[2]">
+              Voir mes matchs
+            </Button>
+            <Button variant="ghost" onClick={onBack} className="sm:flex-1">
+              Modifier mes titres
+            </Button>
+          </div>
+        )}
       </StickyBar>
     </div>
   );

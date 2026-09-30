@@ -26,7 +26,10 @@ function isDuplicate(list, track) {
   );
 }
 
-export default function ImportStep({ titleAs: Title = 'h1', token, selected, onSelectedChange, onSubmit, onBack, loading, autoImportSpotify = true }) {
+export default function ImportStep({
+  titleAs: Title = 'h1', token, selected, onSelectedChange, onSubmit, onBack, loading,
+  autoImportSpotify = true, backLabel = 'Retour', focusManualInput = false,
+}) {
   const [spotifyConnected, setSpotifyConnected] = useState(false);
   const [importingSpotify, setImportingSpotify] = useState(false);
   const [manualName, setManualName] = useState('');
@@ -34,6 +37,8 @@ export default function ImportStep({ titleAs: Title = 'h1', token, selected, onS
   const [manualSuggestions, setManualSuggestions] = useState([]);
   const [manualSearching, setManualSearching] = useState(false);
   const [belowMinAttempted, setBelowMinAttempted] = useState(false);
+  // Titre en cours de modification (un seul à la fois)
+  const [editingId, setEditingId] = useState(null);
   const hasImportedSpotify = useRef(false);
   // Sélection vide à l'arrivée sur l'écran ? (valeur initiale uniquement)
   const startedEmpty = useRef(selected.length === 0);
@@ -121,7 +126,32 @@ export default function ImportStep({ titleAs: Title = 'h1', token, selected, onS
   };
 
   const removeTrack = (trackId) => {
+    if (editingId === trackId) setEditingId(null);
     onSelectedChange((prev) => prev.filter((t) => t.track_id !== trackId));
+  };
+
+  // Renvoie un message d'erreur si la modification crée un doublon.
+  const updateTrack = (trackId, name, artist) => {
+    const original = selected.find((t) => t.track_id === trackId);
+    if (!original) { setEditingId(null); return null; }
+    if (normalize(name) === normalize(original.track_name) &&
+        normalize(artist) === normalize(original.artist_name)) {
+      setEditingId(null);
+      return null;
+    }
+    // Titre/artiste modifiés : ce n'est plus le titre Spotify/Deezer
+    // d'origine, il devient une saisie manuelle.
+    const updated = {
+      track_id: generateManualId(),
+      track_name: name.trim(),
+      artist_name: artist.trim(),
+      source: 'manual',
+    };
+    const others = selected.filter((t) => t.track_id !== trackId);
+    if (isDuplicate(others, updated)) return 'Ce titre est déjà dans ta liste';
+    onSelectedChange((prev) => prev.map((t) => (t.track_id === trackId ? updated : t)));
+    setEditingId(null);
+    return null;
   };
 
   const handleSubmitClick = () => {
@@ -184,6 +214,7 @@ export default function ImportStep({ titleAs: Title = 'h1', token, selected, onS
               onChange={(e) => setManualName(e.target.value)}
               placeholder="Ex. Tout oublier"
               autoComplete="off"
+              autoFocus={focusManualInput}
             />
             <TextField
               label="Artiste"
@@ -247,13 +278,29 @@ export default function ImportStep({ titleAs: Title = 'h1', token, selected, onS
             </p>
           ) : (
             <ul className="flex flex-col gap-2">
-              {selected.map((track) => (
+              {selected.map((track) => (track.track_id === editingId ? (
+                <li key={track.track_id}>
+                  <TrackEditor
+                    track={track}
+                    onSave={(name, artist) => updateTrack(track.track_id, name, artist)}
+                    onCancel={() => setEditingId(null)}
+                  />
+                </li>
+              ) : (
                 <li
                   key={track.track_id}
                   className="flex min-h-14 items-center gap-3 rounded-xl border border-accent/45 bg-surface py-1 pr-1 pl-3"
                 >
                   <TrackGlyph icon={track.source === 'manual' ? 'pencil' : 'music'} />
                   <TrackInfo name={track.track_name} artist={track.artist_name} />
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(track.track_id)}
+                    aria-label={`Modifier ${track.track_name}`}
+                    className={`flex size-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg ${focusRing}`}
+                  >
+                    <Icon name="pencil" className="size-5" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => removeTrack(track.track_id)}
@@ -263,7 +310,7 @@ export default function ImportStep({ titleAs: Title = 'h1', token, selected, onS
                     <Icon name="x" className="size-5" />
                   </button>
                 </li>
-              ))}
+              )))}
             </ul>
           )}
         </Section>
@@ -283,7 +330,7 @@ export default function ImportStep({ titleAs: Title = 'h1', token, selected, onS
         </p>
         <div className="flex gap-3">
           <Button variant="secondary" onClick={onBack} fullWidth={false} className="flex-1 px-3">
-            Retour
+            {backLabel}
           </Button>
           <Button onClick={handleSubmitClick} loading={loading} fullWidth={false} className="flex-[2] px-3">
             {loading ? 'Analyse...' : `Analyser (${selected.length})`}
@@ -291,6 +338,54 @@ export default function ImportStep({ titleAs: Title = 'h1', token, selected, onS
         </div>
       </StickyBar>
     </div>
+  );
+}
+
+// Formulaire de modification en place d'un titre sélectionné.
+function TrackEditor({ track, onSave, onCancel }) {
+  const [name, setName] = useState(track.track_name || '');
+  const [artist, setArtist] = useState(track.artist_name || '');
+  const [editError, setEditError] = useState(null);
+
+  const save = (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setEditError(onSave(name, artist));
+  };
+
+  return (
+    <form
+      onSubmit={save}
+      aria-label={`Modifier ${track.track_name}`}
+      className="flex flex-col gap-3 rounded-xl border border-accent-text bg-surface p-3"
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        <TextField
+          label="Titre"
+          type="text"
+          value={name}
+          onChange={(e) => { setName(e.target.value); setEditError(null); }}
+          autoComplete="off"
+          autoFocus
+          error={!name.trim() ? 'Obligatoire' : editError || undefined}
+        />
+        <TextField
+          label="Artiste"
+          type="text"
+          value={artist}
+          onChange={(e) => { setArtist(e.target.value); setEditError(null); }}
+          autoComplete="off"
+        />
+      </div>
+      <div className="flex gap-3">
+        <Button type="button" variant="ghost" onClick={onCancel} fullWidth={false} className="flex-1 px-3">
+          Annuler
+        </Button>
+        <Button type="submit" disabled={!name.trim()} fullWidth={false} className="flex-1 px-3">
+          Valider
+        </Button>
+      </div>
+    </form>
   );
 }
 

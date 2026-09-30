@@ -5,6 +5,7 @@ import Button from '../../components/Button';
 import Card from '../../components/Card';
 import Chip from '../../components/Chip';
 import Section from '../../components/Section';
+import FormAlert from '../../components/Alert';
 import { LogoMark } from '../../components/Logo';
 import {
   colors, accentGradient, radius, spacing, typography, fontSize, fontWeight,
@@ -55,7 +56,12 @@ function MetricBar({ label, value, caption }) {
   );
 }
 
-export default function DnaScreen({ header, profile, onComplete, onBack }) {
+// En édition (onAddTracks/onEditTracks fournis), l'écran sert de synthèse du
+// profil déjà analysé : les actions proposent de compléter ou corriger les
+// titres plutôt que de continuer l'onboarding.
+export default function DnaScreen({
+  header, profile, onComplete, onBack, onAddTracks, onEditTracks, notice,
+}) {
   if (!profile) {
     return (
       <Screen header={header} center>
@@ -74,16 +80,27 @@ export default function DnaScreen({ header, profile, onComplete, onBack }) {
     <Screen
       header={header}
       footer={
-        <View style={styles.footer}>
-          <Button title="Voir mes matchs" onPress={onComplete} />
-          <Button title="Modifier mes titres" variant="ghost" onPress={onBack} />
-        </View>
+        onEditTracks ? (
+          <View style={styles.footer}>
+            <Button title="Ajouter des titres" onPress={onAddTracks} />
+            <Button title="Modifier ou supprimer mes titres" variant="ghost" onPress={onEditTracks} />
+          </View>
+        ) : (
+          <View style={styles.footer}>
+            <Button title="Voir mes matchs" onPress={onComplete} />
+            <Button title="Modifier mes titres" variant="ghost" onPress={onBack} />
+          </View>
+        )
       }
     >
       <ScreenIntro
         title="Ton ADN musical"
-        subtitle="Voilà ce qu'on a trouvé à partir de tes titres"
+        subtitle={profile.tracks_count
+          ? `Synthèse de l'analyse de tes ${profile.tracks_count} titres`
+          : "Voilà ce qu'on a trouvé à partir de tes titres"}
       />
+
+      <FormAlert tone="success" message={notice} style={styles.notice} />
 
       <View style={styles.cards}>
         {/* Métriques audio — seulement si on a de vraies audio features
@@ -159,6 +176,7 @@ const styles = StyleSheet.create({
   metricCaption: { color: colors.textMuted, fontSize: fontSize.xs, lineHeight: 16 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   footer: { gap: spacing.xs },
+  notice: { marginBottom: spacing.lg },
   emptyBox: { alignItems: 'center', gap: spacing.lg, paddingHorizontal: spacing.lg },
   emptyTitle: { textAlign: 'center', fontSize: fontSize.xl },
   emptyBtn: { alignSelf: 'stretch' },
