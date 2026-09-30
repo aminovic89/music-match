@@ -1,0 +1,43 @@
+name: Recalcul des profils musicaux
+
+# Lancement manuel (onglet Actions → "Recalcul des profils musicaux" → Run
+# workflow) : recalcule le profil de tous les utilisateurs sur Neon à partir
+# de leurs titres déjà enregistrés, avec l'enrichissement ReccoBeats + Last.fm.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry-run : afficher les profils recalculés sans rien écrire'
+        type: boolean
+        default: true
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  recompute:
+    name: Recalculer les profils
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install API dependencies
+        run: npm ci --workspace=apps/api
+
+      - name: Recalculer les profils sur Neon
+        working-directory: apps/api
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          NODE_ENV: production
+        run: node src/database/recompute-profiles.js ${{ inputs.dry_run && '--dry-run' || '' }}
