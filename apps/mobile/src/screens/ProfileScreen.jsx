@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import TextField from '../components/TextField';
 import Section from '../components/Section';
 import FormAlert from '../components/Alert';
+import ProfilePhoto from './ProfilePhoto';
 import { RadioGroup, RadioCard, RadioChip } from '../components/Choice';
 import { colors, spacing, fontSize, typography } from '../theme';
 import { apiClient } from '@music-match/shared';
@@ -22,6 +23,7 @@ const GENDERS = [
 
 export default function ProfileScreen({ onBack }) {
   const [form, setForm] = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -29,6 +31,7 @@ export default function ProfileScreen({ onBack }) {
   useEffect(() => {
     apiClient.getMe()
       .then((data) => {
+        setAvatarUrl(data.user.avatar_url || null);
         setForm({
           first_name: data.user.first_name || '',
           age: data.user.age ? String(data.user.age) : '',
@@ -109,6 +112,12 @@ export default function ProfileScreen({ onBack }) {
       <Text style={[typography.subtitle, styles.intro]}>Modifie tes informations à tout moment</Text>
 
       <View style={styles.sections}>
+        <ProfilePhoto
+          avatarUrl={avatarUrl}
+          firstName={form.first_name}
+          onUploaded={(u) => setAvatarUrl(u?.avatar_url || null)}
+        />
+
         <Section title="Informations">
           <TextField
             label="Prénom"

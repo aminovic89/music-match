@@ -14,6 +14,9 @@ jest.mock('@music-match/shared', () => ({
   },
 }));
 
+// ProfileScreen importe expo-image-picker (module natif) : inutile ici.
+jest.mock('expo-image-picker', () => ({}));
+
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 20, bottom: 0, left: 0, right: 0 }),
   SafeAreaProvider: ({ children }) => children,
