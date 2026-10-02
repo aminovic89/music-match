@@ -9,6 +9,7 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
+      "icon": "./assets/ios-icon.png",
       "bundleIdentifier": "com.musicmatch.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
