@@ -305,7 +305,7 @@ export default function ConversationScreen({
         >
           {disconnected ? <Text style={styles.connectionGlyph}>!</Text> : <ActivityIndicator size="small" color={colors.textMuted} />}
           <Text style={styles.connectionText}>
-            {disconnected ? "Hors connexion. L'envoi reprendra au retour du réseau." : 'Reconnexion en cours…'}
+            {disconnected ? "Hors connexion. Tu pourras écrire dès que la connexion sera revenue." : 'Reconnexion en cours…'}
           </Text>
         </View>
       ) : null}

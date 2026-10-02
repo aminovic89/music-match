@@ -11,6 +11,8 @@ import HomeScreen from './src/screens/HomeScreen';
 import DiscoverScreen from './src/screens/DiscoverScreen';
 import MatchesScreen from './src/screens/MatchesScreen';
 import MessagesScreen from './src/screens/MessagesScreen';
+import ConversationScreen from './src/screens/ConversationScreen';
+import useChat from './src/chat/useChat';
 import TabBar from './src/components/TabBar';
 import { AboveTabBarContext } from './src/components/Screen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -22,7 +24,7 @@ const TOKEN_KEY = 'mm_token';
 // redirection mobile) pour ramener directement l'utilisateur à l'étape Import.
 const ONBOARDING_IMPORT_URL_RE = /^musicmatch:\/\/onboarding-import\?token=(.+)$/;
 
-type Screen = 'loading' | 'login' | 'register' | 'onboarding' | 'home' | 'discover' | 'matches' | 'messages' | 'profile' | 'music';
+type Screen = 'loading' | 'login' | 'register' | 'onboarding' | 'home' | 'discover' | 'matches' | 'messages' | 'conversation' | 'profile' | 'music';
 type Tab = 'home' | 'discover' | 'matches' | 'messages';
 type OnboardingInitialStep = 'import' | undefined;
 
@@ -99,6 +101,32 @@ export default function App() {
     persistToken(null);
   }, []);
 
+  // Chat : socket + données, liés à la session (fermés quand token = null).
+  const chat = useChat(token, { onUnauthorized: handleLogout });
+
+  // "Écrire" depuis les matchs / la célébration : reçoit le match
+  // ({ user_id }) ; on accepte aussi directement un id d'utilisateur.
+  const handleWrite = useCallback(
+    async (target: string | { user_id: string }) => {
+      const userId = typeof target === 'string' ? target : target.user_id;
+      const found = await chat.openWithUser(userId);
+      setScreen(found ? 'conversation' : 'messages');
+    },
+    [chat.openWithUser] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const handleCloseConversation = () => {
+    chat.close();
+    setScreen('messages');
+  };
+
+  const handleNavigateTab = (tab: Tab) => {
+    if (tab === 'messages') chat.reloadConversations();
+    setScreen(tab);
+  };
+
+  const activeConversation = chat.conversations.find((c: { id: string }) => c.id === chat.openId);
+
   if (screen === 'loading') {
     return (
       <View style={styles.loading}>
@@ -150,36 +178,55 @@ export default function App() {
                   onNavigateMatches={() => setScreen('matches')}
                   onNavigateMusic={() => setScreen('music')}
                   onUnauthorized={handleLogout}
-                  onWrite={() => setScreen('messages')}
+                  onWrite={handleWrite}
                 />
               )}
               {screen === 'matches' && (
                 <MatchesScreen
                   onNavigateDiscover={() => setScreen('discover')}
                   onUnauthorized={handleLogout}
-                  onWrite={() => setScreen('messages')}
+                  onWrite={handleWrite}
                 />
               )}
-              {/* TODO(mobile-expo) — câblage du chat, la présentation est prête :
-                  - conversations : GET /api/chat/conversations (+ loading / error / onRetry) ;
-                  - onOpenConversation(id) : ajouter un écran poussé 'conversation' (hors
-                    onglets, comme 'profile') qui rend ConversationScreen
-                    (src/screens/ConversationScreen.jsx, contrat en tête de fichier) ;
-                  - onWrite (matchs, célébration) : ouvrir la conversation dont
-                    `user.id` vaut `match.user_id` / `celebration.user_id` ;
-                  - total des non-lus → <TabBar badges={{ messages: total }} />. */}
               {screen === 'messages' && (
                 <MessagesScreen
-                  conversations={[]}
-                  onOpenConversation={() => {}}
+                  conversations={chat.conversations}
+                  loading={chat.conversationsLoading}
+                  error={chat.conversationsError}
+                  onRetry={chat.reloadConversations}
+                  onOpenConversation={(id: string) => {
+                    chat.open(id);
+                    setScreen('conversation');
+                  }}
                   onNavigateDiscover={() => setScreen('discover')}
                   onNavigateMatches={() => setScreen('matches')}
                 />
               )}
             </View>
           </AboveTabBarContext.Provider>
-          <TabBar current={screen as Tab} onNavigate={(tab: Tab) => setScreen(tab)} />
+          <TabBar
+            current={screen as Tab}
+            onNavigate={handleNavigateTab}
+            badges={{ messages: chat.unreadTotal }}
+          />
         </View>
+      )}
+      {screen === 'conversation' && activeConversation && (
+        <ConversationScreen
+          peer={activeConversation.user}
+          currentUserId={chat.currentUserId ?? ''}
+          messages={chat.messages}
+          loading={chat.messagesLoading}
+          error={chat.messagesError}
+          onReload={chat.reloadMessages}
+          peerTyping={chat.peerTyping}
+          connection={chat.connection}
+          onSend={chat.send}
+          onRetry={chat.retry}
+          onTyping={chat.typing}
+          onStopTyping={chat.stopTyping}
+          onBack={handleCloseConversation}
+        />
       )}
       {screen === 'profile' && <ProfileScreen onBack={() => setScreen('home')} />}
       {screen === 'music' && <MusicEditScreen token={token} onBack={() => setScreen('home')} />}

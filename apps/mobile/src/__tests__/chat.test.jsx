@@ -367,7 +367,7 @@ describe('ConversationScreen (zone de saisie)', () => {
 
   it('état de la connexion : bandeau, et envoi désactivé hors connexion', async () => {
     const offline = await render(conversation({ connection: 'disconnected' }));
-    expect(hasText(offline.root, "Hors connexion. L'envoi reprendra au retour du réseau.")).toBe(true);
+    expect(hasText(offline.root, "Hors connexion. Tu pourras écrire dès que la connexion sera revenue.")).toBe(true);
     await type(offline.root, 'Message à Inès', 'Salut');
     expect(sendButton(offline.root).props.disabled).toBe(true);
     expect(hasText(offline.root, 'Envoi indisponible hors connexion.')).toBe(true);
