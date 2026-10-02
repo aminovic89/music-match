@@ -16,7 +16,9 @@ export function formatDate(iso) {
 }
 
 // Miroir de apps/web/app/(app)/matches/page.jsx.
-export default function MatchesScreen({ onNavigateDiscover, onUnauthorized }) {
+// `onWrite(match)` (optionnel) : affiche "Écrire" sous chaque match ; le
+// match porte `user_id`, à partir duquel le câblage retrouve la conversation.
+export default function MatchesScreen({ onNavigateDiscover, onUnauthorized, onWrite }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [matches, setMatches] = useState([]);
@@ -89,18 +91,29 @@ export default function MatchesScreen({ onNavigateDiscover, onUnauthorized }) {
               .filter(Boolean)
               .join(', ');
             return (
-              <View key={match.id} style={styles.item} accessible accessibilityLabel={label}>
-                <Avatar avatarUrl={match.avatar_url} firstName={match.first_name} size={56} />
-                <View style={styles.text}>
-                  <Text style={styles.name} numberOfLines={2}>
-                    {`${match.first_name}, ${match.age}`}
-                  </Text>
-                  {match.city ? <Text style={typography.subtitle}>{match.city}</Text> : null}
-                  {dates ? <Text style={typography.caption}>{dates}</Text> : null}
+              <View key={match.id} style={styles.item}>
+                {/* Infos regroupées en un seul élément accessible ; le bouton
+                    reste un élément à part (sinon inatteignable sur iOS). */}
+                <View style={styles.info} accessible accessibilityLabel={label}>
+                  <Avatar avatarUrl={match.avatar_url} firstName={match.first_name} size={56} />
+                  <View style={styles.text}>
+                    <Text style={styles.name} numberOfLines={2}>
+                      {`${match.first_name}, ${match.age}`}
+                    </Text>
+                    {match.city ? <Text style={typography.subtitle}>{match.city}</Text> : null}
+                    {dates ? <Text style={typography.caption}>{dates}</Text> : null}
+                  </View>
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{`${pct}%`}</Text>
+                  </View>
                 </View>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{`${pct}%`}</Text>
-                </View>
+                {onWrite ? (
+                  <Button
+                    title={`Écrire à ${match.first_name}`}
+                    variant="secondary"
+                    onPress={() => onWrite(match)}
+                  />
+                ) : null}
               </View>
             );
           })}
@@ -127,9 +140,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
+    gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.surface,
@@ -137,6 +148,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...shadow.card,
   },
+  info: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   text: { flex: 1, gap: 2 },
   name: { color: colors.text, fontSize: fontSize.base, lineHeight: lineHeight.base, fontWeight: fontWeight.semibold },
   badge: {

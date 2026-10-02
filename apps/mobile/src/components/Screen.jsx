@@ -17,7 +17,7 @@ import { colors, spacing, touch, fontSize, fontWeight, lineHeight, radius } from
 const MAX_CONTENT_WIDTH = 560;
 
 // Clavier visible ? (iOS : événements "will" pour réagir avant l'animation.)
-function useKeyboardVisible() {
+export function useKeyboardVisible() {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';

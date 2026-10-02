@@ -109,7 +109,8 @@ export default function DiscoverPage() {
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
       if (data.matched) {
-        setMatchCelebration({ first_name: candidate.first_name });
+        // `id` : sert seulement au lien "Écrire" de la célébration.
+        setMatchCelebration({ id: candidate.id, first_name: candidate.first_name });
       } else {
         setCurrentIndex((i) => i + 1);
       }
@@ -176,8 +177,16 @@ export default function DiscoverPage() {
               C&apos;est un match avec {matchCelebration.first_name} !
             </h2>
             <div className="flex w-full max-w-xs flex-col gap-3">
-              <Button onClick={dismissCelebration}>Continuer à découvrir</Button>
-              <Link href="/matches" className={buttonClasses({ variant: 'secondary' })}>
+              {/* Après un match, l'action naturelle est d'écrire : c'est
+                  l'action principale, continuer passe en secondaire. */}
+              <Link href={`/messages?u=${encodeURIComponent(matchCelebration.id)}`} className={buttonClasses()}>
+                <Icon name="chat" />
+                Écrire à {matchCelebration.first_name}
+              </Link>
+              <Button variant="secondary" onClick={dismissCelebration}>
+                Continuer à découvrir
+              </Button>
+              <Link href="/matches" className={buttonClasses({ variant: 'ghost' })}>
                 Voir mes matchs
               </Link>
             </div>
