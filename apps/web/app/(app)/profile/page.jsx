@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Button, { buttonClasses } from '@/components/Button';
+import Avatar from '@/components/Avatar';
+import Button, { buttonClasses, Spinner } from '@/components/Button';
 import FormAlert from '@/components/Alert';
 import PageContainer from '@/components/PageContainer';
 import PageHeader from '@/components/PageHeader';
@@ -26,12 +27,44 @@ const GENDERS = [
   { id: 'other', label: 'Autre' },
 ];
 
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // même limite que l'API (multer)
+
+// Envoi multipart via XHR : fetch n'expose pas la progression d'upload.
+function uploadPhoto(file, token, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API}/api/users/me/photo`);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onerror = () => reject(new Error('Connexion impossible. Vérifie ta connexion et réessaie.'));
+    xhr.onload = () => {
+      let data = {};
+      try { data = JSON.parse(xhr.responseText); } catch { /* corps non JSON */ }
+      if (xhr.status >= 200 && xhr.status < 300) return resolve(data);
+      if (xhr.status === 401) return reject(Object.assign(new Error('Session expirée'), { status: 401 }));
+      if (xhr.status >= 500) return reject(new Error("L'envoi a échoué. Réessaie dans un instant."));
+      reject(new Error(data.error || `HTTP ${xhr.status}`));
+    };
+    const body = new FormData();
+    body.append('photo', file);
+    xhr.send(body);
+  });
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [user, setUser] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [photoError, setPhotoError] = useState(null);
+  const [photoSuccess, setPhotoSuccess] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('mm_token');
@@ -40,6 +73,7 @@ export default function ProfilePage() {
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        setUser({ first_name: data.user.first_name, avatar_url: data.user.avatar_url });
         setForm({
           first_name: data.user.first_name || '',
           age: data.user.age || '',
@@ -51,6 +85,41 @@ export default function ProfilePage() {
       })
       .catch((err) => setError(err.message));
   }, [router]);
+
+  // Envoi immédiat à la sélection : la photo a son propre endpoint et reste
+  // indépendante du bouton « Enregistrer » (qui ne gère que le texte).
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permet de re-sélectionner le même fichier
+    if (!file) return;
+    setPhotoSuccess(false);
+    if (!file.type.startsWith('image/')) {
+      setPhotoError('Ce fichier n’est pas une image. Choisis une photo (JPG, PNG…).');
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError('Cette photo est trop volumineuse (5 Mo maximum).');
+      return;
+    }
+    setPhotoError(null);
+    setProgress(0);
+    setUploading(true);
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    try {
+      const token = localStorage.getItem('mm_token');
+      const data = await uploadPhoto(file, token, setProgress);
+      setUser((u) => ({ ...u, avatar_url: data.user.avatar_url }));
+      setPhotoSuccess(true);
+    } catch (err) {
+      if (err.status === 401) { router.replace('/login'); return; }
+      setPhotoError(err.message);
+    } finally {
+      setUploading(false);
+      setPreview(null);
+      URL.revokeObjectURL(url);
+    }
+  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -107,6 +176,43 @@ export default function ProfilePage() {
         }}
       >
         <div className="flex flex-col gap-10">
+          <Section title="Photo de profil">
+            <div className="flex flex-col items-center gap-4 sm:flex-row" aria-busy={uploading || undefined}>
+              <Avatar
+                avatarUrl={preview || user?.avatar_url}
+                firstName={user?.first_name}
+                size={112}
+                ring
+                className={uploading ? 'opacity-70' : ''}
+              />
+              <div className="flex w-full flex-col gap-2 sm:w-auto">
+                <input
+                  id="profile-photo-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhoto}
+                  disabled={uploading}
+                  aria-describedby="profile-photo-hint"
+                  className="peer sr-only"
+                />
+                <label
+                  htmlFor="profile-photo-input"
+                  className={`${buttonClasses({ variant: 'secondary', fullWidth: false, className: 'cursor-pointer' })} peer-focus-visible:ring-2 peer-focus-visible:ring-focus peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background ${uploading ? 'pointer-events-none opacity-60' : ''}`}
+                >
+                  {uploading && <Spinner />}
+                  {uploading
+                    ? `Envoi en cours… ${progress}\u00a0%`
+                    : user?.avatar_url ? 'Changer ma photo' : 'Ajouter une photo'}
+                </label>
+                <p id="profile-photo-hint" className="text-center text-xs text-muted sm:text-left">
+                  Image JPG, PNG… · 5 Mo maximum
+                </p>
+              </div>
+            </div>
+            <FormAlert id="profile-photo-error" message={photoError} />
+            <FormAlert id="profile-photo-success" tone="success" message={photoSuccess ? 'Photo mise à jour' : null} />
+          </Section>
+
           <Section title="Informations">
             <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_8rem]">
               <TextField

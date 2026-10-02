@@ -16,14 +16,17 @@ class ApiClient {
   }
 
   async request(method, path, body = null) {
-    const headers = { 'Content-Type': 'application/json' };
+    const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
+    // FormData : pas de Content-Type forcé, fetch ajoute le multipart + boundary.
+    const headers = isForm ? {} : { 'Content-Type': 'application/json' };
     if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
 
     const options = { method, headers };
-    if (body) options.body = JSON.stringify(body);
+    if (body) options.body = isForm ? body : JSON.stringify(body);
 
     const response = await fetch(`${this.baseUrl}${path}`, options);
-    const data = await response.json();
+    // Un proxy peut répondre hors JSON (ex. 413 HTML) : on garde error.status.
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
       const error = new Error(data.error || `HTTP ${response.status}`);
@@ -44,6 +47,13 @@ class ApiClient {
   // Profil
   getMe() { return this.request('GET', '/api/users/me'); }
   updateMe(payload) { return this.request('PATCH', '/api/users/me', payload); }
+
+  // Photo de profil : `file` = { uri, name, type } (React Native) ou Blob/File (web).
+  uploadPhoto(file) {
+    const form = new FormData();
+    form.append('photo', file);
+    return this.request('POST', '/api/users/me/photo', form);
+  }
 
   // Musique
   searchTracks(query) { return this.request('GET', `/api/music/search?q=${encodeURIComponent(query)}`); }
