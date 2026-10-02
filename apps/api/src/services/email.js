@@ -143,12 +143,12 @@ async function sendEmail(user, subject, content) {
 async function sendPasswordResetEmail(user, rawToken) {
   const resetUrl = `${FRONTEND_URL}/reset-password?token=${rawToken}`;
 
-  await sendEmail(user, 'Réinitialisation de votre mot de passe Music Match', {
+  await sendEmail(user, 'Réinitialisation de ton mot de passe Music Match', {
     title: 'Nouveau mot de passe',
     greeting: greetingFor(user),
-    paragraphs: ['Vous avez demandé la réinitialisation de votre mot de passe Music Match.'],
+    paragraphs: ['Tu as demandé la réinitialisation de ton mot de passe Music Match.'],
     cta: { label: 'Choisir un nouveau mot de passe', url: resetUrl },
-    note: `Ce lien expire dans ${PASSWORD_RESET_TOKEN_TTL_MINUTES} minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.`,
+    note: `Ce lien expire dans ${PASSWORD_RESET_TOKEN_TTL_MINUTES} minutes. Si tu n'es pas à l'origine de cette demande, ignore cet email.`,
   });
 }
 
