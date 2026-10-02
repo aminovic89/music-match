@@ -6,6 +6,7 @@ import DnaScreen from './onboarding/DnaScreen';
 import Screen, { ScreenHeader } from '../components/Screen';
 import { LoadingState } from '../components/States';
 import { colors } from '../theme';
+import useHardwareBack from '../useHardwareBack';
 
 const STEPS = { IMPORT: 0, DNA: 1 };
 
@@ -76,6 +77,11 @@ export default function MusicEditScreen({ token, onBack }) {
     setError(null);
     setStep(STEPS.DNA);
   };
+
+  // Retour Android : annule l'édition en cours s'il y a une synthèse à
+  // retrouver, sinon revient à l'accueil comme le bouton de l'en-tête.
+  const editing = ready && step === STEPS.IMPORT && musicProfile;
+  useHardwareBack(editing ? cancelEdit : onBack);
 
   // En-tête commun aux deux étapes : l'utilisateur sait qu'il modifie sa
   // musique (et non qu'il refait l'onboarding) et peut revenir à l'accueil.

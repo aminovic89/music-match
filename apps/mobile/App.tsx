@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { apiClient } from '@music-match/shared';
 import { colors } from './src/theme';
+import useHardwareBack from './src/useHardwareBack';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -126,6 +127,18 @@ export default function App() {
   };
 
   const activeConversation = chat.conversations.find((c: { id: string }) => c.id === chat.openId);
+
+  // Retour Android pour les écrans rendus ici. Accueil et connexion sont des
+  // racines (le système quitte l'appli) ; profil, musique et onboarding
+  // gèrent leur propre retour.
+  const hardwareBack: Partial<Record<Screen, () => void>> = {
+    register: () => setScreen('login'),
+    discover: () => setScreen('home'),
+    matches: () => setScreen('home'),
+    messages: () => setScreen('home'),
+    conversation: handleCloseConversation,
+  };
+  useHardwareBack(hardwareBack[screen]);
 
   if (screen === 'loading') {
     return (
