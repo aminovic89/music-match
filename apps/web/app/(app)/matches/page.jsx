@@ -92,7 +92,7 @@ export default function MatchesPage() {
             return (
               <li
                 key={match.id}
-                className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-card"
+                className="flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-card"
               >
                 <Avatar avatarUrl={match.avatar_url} firstName={match.first_name} size={56} ring />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -111,6 +111,23 @@ export default function MatchesPage() {
                 <span className="shrink-0 rounded-full border border-accent/45 bg-accent/15 px-3 py-1 text-sm font-semibold tabular-nums text-accent-text">
                   {pct}%<span className="sr-only"> compatible</span>
                 </span>
+                {/* Entrée vers le chat : l'API des matchs renvoie `user_id`
+                    (pas l'id de conversation), /messages retrouve la
+                    conversation à partir de ce paramètre. Pleine largeur
+                    sous la ligne en mobile, à droite à partir de sm. */}
+                {match.user_id && (
+                  <Link
+                    href={`/messages?u=${encodeURIComponent(match.user_id)}`}
+                    className={buttonClasses({
+                      variant: 'secondary',
+                      fullWidth: false,
+                      className: 'w-full sm:w-auto',
+                    })}
+                  >
+                    <Icon name="chat" />
+                    Écrire<span className="sr-only"> à {match.first_name}</span>
+                  </Link>
+                )}
               </li>
             );
           })}
