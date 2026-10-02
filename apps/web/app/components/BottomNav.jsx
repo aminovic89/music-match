@@ -6,18 +6,38 @@ import Icon from './Icon';
 import Logo from './Logo';
 import { focusRing } from './Button';
 
+// `short` : libellé de la barre du bas. Avec 4 onglets, chacun ne fait
+// plus que 80px à 320px de large : un seul mot par onglet (les mêmes que la
+// TabBar mobile), sinon le texte passe sur deux lignes.
 const ITEMS = [
-  { href: '/home', icon: 'home', label: 'Accueil' },
-  { href: '/discover', icon: 'compass', label: 'Trouver des matchs' },
-  { href: '/matches', icon: 'heart', label: 'Mes matchs' },
+  { href: '/home', icon: 'home', label: 'Accueil', short: 'Accueil' },
+  { href: '/discover', icon: 'compass', label: 'Trouver des matchs', short: 'Découvrir' },
+  { href: '/matches', icon: 'heart', label: 'Mes matchs', short: 'Matchs' },
+  { href: '/messages', icon: 'chat', label: 'Messages', short: 'Messages' },
 ];
+
+// Pastille de messages non lus : nombre visible (plafonné à 99+) et
+// libellé complet pour les lecteurs d'écran — jamais un simple point coloré.
+function UnreadBadge({ count, className = '' }) {
+  if (!count || count <= 0) return null;
+  return (
+    <span
+      className={`flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[0.6875rem] leading-none font-semibold tabular-nums text-white ${className}`}
+    >
+      <span aria-hidden="true">{count > 99 ? '99+' : count}</span>
+      <span className="sr-only">{count > 1 ? `, ${count} messages non lus` : ', 1 message non lu'}</span>
+    </span>
+  );
+}
 
 // Navigation de l'espace connecté (mêmes routes qu'avant) :
 // - mobile (< md) : barre d'onglets fixe en bas ;
 // - desktop (≥ md) : en-tête collant en haut, logo + liens.
 // La page active est signalée par aria-current, la couleur ET un
 // indicateur (barre / fond), pas par la couleur seule.
-export default function BottomNav() {
+// `unreadCount` : total des messages non lus, affiché sur l'onglet Messages
+// (0 par défaut tant que le chat n'est pas câblé).
+export default function BottomNav({ unreadCount = 0 }) {
   const pathname = usePathname();
 
   return (
@@ -36,12 +56,16 @@ export default function BottomNav() {
                     <Link
                       href={item.href}
                       aria-current={active ? 'page' : undefined}
-                      className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-medium transition-colors ${
+                      className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium whitespace-nowrap transition-colors lg:px-4 ${
                         active ? 'bg-accent/15 text-fg' : 'text-muted hover:bg-surface-2 hover:text-fg'
                       } ${focusRing}`}
                     >
                       <Icon name={item.icon} className={`size-5 ${active ? 'text-accent-text' : ''}`} />
-                      {item.label}
+                      {/* 4 liens : libellés courts entre md et lg (768–1023px),
+                          sinon l'en-tête déborde. */}
+                      <span className="lg:hidden">{item.short}</span>
+                      <span className="hidden lg:inline">{item.label}</span>
+                      {item.href === '/messages' && <UnreadBadge count={unreadCount} />}
                     </Link>
                   </li>
                 );
@@ -68,10 +92,15 @@ export default function BottomNav() {
                   } ${focusRing} focus-visible:ring-offset-0 focus-visible:ring-inset`}
                 >
                   {active && (
-                    <span aria-hidden="true" className="absolute inset-x-6 top-0 h-0.5 rounded-full bg-linear-to-r from-accent to-accent-2" />
+                    <span aria-hidden="true" className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-linear-to-r from-accent to-accent-2" />
                   )}
-                  <Icon name={item.icon} className={`size-6 ${active ? 'text-accent-text' : ''}`} />
-                  <span>{item.label}</span>
+                  <span className="relative">
+                    <Icon name={item.icon} className={`size-6 ${active ? 'text-accent-text' : ''}`} />
+                    {item.href === '/messages' && (
+                      <UnreadBadge count={unreadCount} className="absolute -top-1.5 left-3.5 ring-2 ring-surface" />
+                    )}
+                  </span>
+                  <span>{item.short}</span>
                 </Link>
               </li>
             );
