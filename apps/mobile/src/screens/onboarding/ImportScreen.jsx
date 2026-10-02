@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ActivityIndicator, Linking,
+  View, Text, Pressable, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import Screen, { ScreenIntro } from '../../components/Screen';
 import Button from '../../components/Button';
@@ -33,10 +33,8 @@ function isDuplicate(list, track) {
 
 export default function ImportScreen({
   header, token, selected, onSelectedChange, onSubmit, onBack, loading, error,
-  autoImportSpotify = true, backLabel = 'Retour', focusManualInput = false,
+  backLabel = 'Retour', focusManualInput = false,
 }) {
-  const [spotifyConnected, setSpotifyConnected] = useState(false);
-  const [importingSpotify, setImportingSpotify] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualArtist, setManualArtist] = useState('');
   const [manualSuggestions, setManualSuggestions] = useState([]);
@@ -44,47 +42,6 @@ export default function ImportScreen({
   const [belowMinAttempted, setBelowMinAttempted] = useState(false);
   // Titre en cours de modification (un seul à la fois)
   const [editingId, setEditingId] = useState(null);
-  const hasImportedSpotify = useRef(false);
-  // Sélection vide à l'arrivée sur l'écran ? (valeur initiale uniquement)
-  const startedEmpty = useRef(selected.length === 0);
-
-  const importSpotifyTopTracks = useCallback(async () => {
-    setImportingSpotify(true);
-    try {
-      const res = await fetch(`${API}/api/music/spotify/top-tracks`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok) {
-        onSelectedChange((prev) => {
-          const merged = [...prev];
-          for (const track of data.tracks || []) {
-            if (!isDuplicate(merged, track)) merged.push(track);
-          }
-          return merged;
-        });
-      }
-    } catch (_e) {}
-    finally { setImportingSpotify(false); }
-  }, [token, onSelectedChange]);
-
-  useEffect(() => {
-    if (!token) return;
-    fetch(`${API}/api/music/spotify/status`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        setSpotifyConnected(data.connected);
-        // Import auto uniquement à la demande ET sélection vide (onboarding) :
-        // en édition il réinjecterait les titres que l'utilisateur a retirés.
-        if (data.connected && autoImportSpotify && startedEmpty.current && !hasImportedSpotify.current) {
-          hasImportedSpotify.current = true;
-          importSpotifyTopTracks();
-        }
-      })
-      .catch(() => {});
-  }, [token, autoImportSpotify, importSpotifyTopTracks]);
 
   // Suggestions Deezer (recherche publique, pas besoin de compte connecté)
   // pour aider à la saisie manuelle. Recherche combinée titre + artiste,
@@ -177,12 +134,6 @@ export default function ImportScreen({
   // l'annonce (il est affiché dans la barre du bas, loin du focus).
   useAnnounce(belowMinAttempted && hint ? hint : null);
 
-  const spotifyStatus = importingSpotify
-    ? 'Importation de tes titres...'
-    : spotifyConnected
-      ? '✓ Connecté'
-      : 'Importe automatiquement tes titres les plus écoutés';
-
   return (
     <Screen
       header={header}
@@ -217,32 +168,6 @@ export default function ImportScreen({
       <FormAlert message={error} style={styles.alert} />
 
       <View style={styles.sections}>
-        {/* Connexion Spotify */}
-        <Pressable
-          onPress={() => Linking.openURL(`${API}/api/auth/spotify?platform=mobile`)}
-          accessibilityRole="button"
-          accessibilityLabel={`Connecter Spotify. ${spotifyStatus}`}
-          accessibilityState={{ busy: importingSpotify }}
-          style={({ pressed }) => [
-            styles.spotifyCard,
-            spotifyConnected && styles.spotifyConnected,
-            pressed && styles.pressed,
-          ]}
-        >
-          <View style={[styles.spotifyIcon, spotifyConnected && styles.spotifyIconConnected]}>
-            {importingSpotify
-              ? <ActivityIndicator size="small" color={colors.text} />
-              : <Text style={styles.spotifyGlyph}>{spotifyConnected ? '✓' : '♪'}</Text>}
-          </View>
-          <View style={styles.spotifyInfo}>
-            <Text style={styles.spotifyTitle}>Connecter Spotify</Text>
-            <Text style={[styles.spotifyDesc, spotifyConnected && styles.spotifyDescConnected]}>
-              {spotifyStatus}
-            </Text>
-          </View>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
-
         {/* Saisie manuelle + suggestions Deezer en direct */}
         <Section title="Ou ajoute un titre manuellement">
           <TextField
@@ -418,33 +343,6 @@ const styles = StyleSheet.create({
   alert: { marginBottom: spacing.lg },
   sections: { gap: spacing.xxl },
   pressed: { opacity: 0.8 },
-  spotifyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    minHeight: touch.control,
-    padding: spacing.lg,
-    borderRadius: radius.field + 2,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    backgroundColor: colors.surface,
-  },
-  spotifyConnected: { borderColor: colors.successLine, backgroundColor: colors.successBg },
-  spotifyIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  spotifyIconConnected: { backgroundColor: 'rgba(110, 231, 183, 0.18)' },
-  spotifyGlyph: { color: colors.text, fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
-  spotifyInfo: { flex: 1, gap: 2 },
-  spotifyTitle: { color: colors.text, fontSize: fontSize.base, fontWeight: fontWeight.semibold },
-  spotifyDesc: { color: colors.textMuted, fontSize: fontSize.sm, lineHeight: 20 },
-  spotifyDescConnected: { color: colors.success, fontWeight: fontWeight.medium },
-  chevron: { color: colors.textMuted, fontSize: 26 },
   searching: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   list: { gap: spacing.sm },
   row: {
