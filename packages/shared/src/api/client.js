@@ -65,6 +65,12 @@ class ApiClient {
   getDiscover() { return this.request('GET', '/api/matching/discover'); }
   likeUser(toUserId) { return this.request('POST', '/api/matching/like', { to_user_id: toUserId }); }
   getMatches() { return this.request('GET', '/api/matching/matches'); }
+
+  // Chat (l'ouverture de l'historique marque les messages reçus comme lus)
+  getConversations() { return this.request('GET', '/api/chat/conversations'); }
+  getConversationMessages(id) {
+    return this.request('GET', `/api/chat/conversations/${encodeURIComponent(id)}/messages`);
+  }
 }
 
 const apiClient = new ApiClient();
