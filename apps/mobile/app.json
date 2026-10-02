@@ -28,7 +28,15 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Music Match accède à tes photos pour que tu puisses choisir ta photo de profil.",
+          "cameraPermission": "Music Match utilise ta caméra pour prendre ta photo de profil.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "extra": {
       "eas": {
