@@ -8,7 +8,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
+      "icon": "./assets/ios-icon.png",
       "bundleIdentifier": "com.musicmatch.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -28,7 +29,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -40,6 +46,11 @@
       [
         "expo-splash-screen",
         {
+          "backgroundColor": "#030712",
+          "ios": {
+            "image": "./assets/splash-icon-ios.png",
+            "imageWidth": 120
+          },
           "android": {
             "image": "./assets/splash-icon.png",
             "imageWidth": 200,
