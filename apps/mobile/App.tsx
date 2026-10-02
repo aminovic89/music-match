@@ -10,6 +10,7 @@ import RegisterScreen from './src/screens/auth/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import DiscoverScreen from './src/screens/DiscoverScreen';
 import MatchesScreen from './src/screens/MatchesScreen';
+import MessagesScreen from './src/screens/MessagesScreen';
 import TabBar from './src/components/TabBar';
 import { AboveTabBarContext } from './src/components/Screen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -21,8 +22,8 @@ const TOKEN_KEY = 'mm_token';
 // redirection mobile) pour ramener directement l'utilisateur à l'étape Import.
 const ONBOARDING_IMPORT_URL_RE = /^musicmatch:\/\/onboarding-import\?token=(.+)$/;
 
-type Screen = 'loading' | 'login' | 'register' | 'onboarding' | 'home' | 'discover' | 'matches' | 'profile' | 'music';
-type Tab = 'home' | 'discover' | 'matches';
+type Screen = 'loading' | 'login' | 'register' | 'onboarding' | 'home' | 'discover' | 'matches' | 'messages' | 'profile' | 'music';
+type Tab = 'home' | 'discover' | 'matches' | 'messages';
 type OnboardingInitialStep = 'import' | undefined;
 
 // SecureStore n'a pas d'implémentation sur web (et pourrait échouer sur un
@@ -129,7 +130,7 @@ export default function App() {
           onComplete={() => setScreen('home')}
         />
       )}
-      {(screen === 'home' || screen === 'discover' || screen === 'matches') && (
+      {(screen === 'home' || screen === 'discover' || screen === 'matches' || screen === 'messages') && (
         <View style={styles.flex}>
           {/* Les écrans à onglets ne rajoutent pas l'inset bas : la TabBar
               en dessous s'en charge (sinon double espace au-dessus). */}
@@ -149,12 +150,30 @@ export default function App() {
                   onNavigateMatches={() => setScreen('matches')}
                   onNavigateMusic={() => setScreen('music')}
                   onUnauthorized={handleLogout}
+                  onWrite={() => setScreen('messages')}
                 />
               )}
               {screen === 'matches' && (
                 <MatchesScreen
                   onNavigateDiscover={() => setScreen('discover')}
                   onUnauthorized={handleLogout}
+                  onWrite={() => setScreen('messages')}
+                />
+              )}
+              {/* TODO(mobile-expo) — câblage du chat, la présentation est prête :
+                  - conversations : GET /api/chat/conversations (+ loading / error / onRetry) ;
+                  - onOpenConversation(id) : ajouter un écran poussé 'conversation' (hors
+                    onglets, comme 'profile') qui rend ConversationScreen
+                    (src/screens/ConversationScreen.jsx, contrat en tête de fichier) ;
+                  - onWrite (matchs, célébration) : ouvrir la conversation dont
+                    `user.id` vaut `match.user_id` / `celebration.user_id` ;
+                  - total des non-lus → <TabBar badges={{ messages: total }} />. */}
+              {screen === 'messages' && (
+                <MessagesScreen
+                  conversations={[]}
+                  onOpenConversation={() => {}}
+                  onNavigateDiscover={() => setScreen('discover')}
+                  onNavigateMatches={() => setScreen('matches')}
                 />
               )}
             </View>

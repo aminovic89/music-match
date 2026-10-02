@@ -15,7 +15,9 @@ import { colors, accentGradient, radius, spacing, typography, fontSize, fontWeig
 // Miroir de apps/web/app/(app)/discover/page.jsx. Le backend n'a pas de
 // notion de "pass" : Passer avance simplement dans la liste locale (le
 // profil peut réapparaître à un prochain rafraîchissement).
-export default function DiscoverScreen({ onNavigateMatches, onNavigateMusic, onUnauthorized }) {
+// `onWrite({ user_id, first_name })` (optionnel) : ajoute "Écrire à …" comme
+// action principale de la célébration d'un match.
+export default function DiscoverScreen({ onNavigateMatches, onNavigateMusic, onUnauthorized, onWrite }) {
   const [loading, setLoading] = useState(true);
   const [liking, setLiking] = useState(false);
   const [error, setError] = useState(null);
@@ -86,7 +88,7 @@ export default function DiscoverScreen({ onNavigateMatches, onNavigateMusic, onU
     try {
       const data = await apiClient.likeUser(candidate.id);
       if (!mounted.current) return;
-      if (data.matched) setCelebration({ first_name: candidate.first_name });
+      if (data.matched) setCelebration({ user_id: candidate.id, first_name: candidate.first_name });
       else setIndex((i) => i + 1);
     } catch (err) {
       if (mounted.current && !handleError(err)) setError(err.message);
@@ -152,8 +154,21 @@ export default function DiscoverScreen({ onNavigateMatches, onNavigateMusic, onU
               {`C'est un match avec ${celebration.first_name} !`}
             </Text>
             <View style={styles.celebrationActions}>
-              <Button title="Continuer à découvrir" onPress={dismissCelebration} />
-              <Button title="Voir mes matchs" variant="secondary" onPress={onNavigateMatches} />
+              {/* Après un match, l'action naturelle est d'écrire : elle
+                  devient l'action principale quand le chat est disponible. */}
+              {onWrite ? (
+                <Button title={`Écrire à ${celebration.first_name}`} onPress={() => onWrite(celebration)} />
+              ) : null}
+              <Button
+                title="Continuer à découvrir"
+                variant={onWrite ? 'secondary' : 'primary'}
+                onPress={dismissCelebration}
+              />
+              <Button
+                title="Voir mes matchs"
+                variant={onWrite ? 'ghost' : 'secondary'}
+                onPress={onNavigateMatches}
+              />
             </View>
           </View>
         </View>
