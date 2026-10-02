@@ -327,16 +327,20 @@ export default function ImportScreen({
                 <View key={item.track_id} style={[styles.row, styles.rowSelected]}>
                   <TrackGlyph glyph={item.source === 'manual' ? '✎' : '♪'} />
                   <TrackInfo name={item.track_name} artist={item.artist_name} />
-                  <IconButton
-                    glyph="✎"
-                    accessibilityLabel={`Modifier ${item.track_name}`}
-                    onPress={() => setEditingId(item.track_id)}
-                  />
-                  <IconButton
-                    glyph="✕"
-                    accessibilityLabel={`Retirer ${item.track_name}`}
-                    onPress={() => removeTrack(item.track_id)}
-                  />
+                  {/* Actions groupées sans gouttière entre elles : deux cibles
+                      de 44pt côte à côte laissent plus de place au titre à 320pt. */}
+                  <View style={styles.rowActions}>
+                    <IconButton
+                      glyph="✎"
+                      accessibilityLabel={`Modifier ${item.track_name}`}
+                      onPress={() => setEditingId(item.track_id)}
+                    />
+                    <IconButton
+                      glyph="✕"
+                      accessibilityLabel={`Retirer ${item.track_name}`}
+                      onPress={() => removeTrack(item.track_id)}
+                    />
+                  </View>
                 </View>
               )))}
             </View>
@@ -352,6 +356,7 @@ function TrackEditor({ track, onSave, onCancel }) {
   const [name, setName] = useState(track.track_name || '');
   const [artist, setArtist] = useState(track.artist_name || '');
   const [editError, setEditError] = useState(null);
+  const artistRef = useRef(null);
   useAnnounce(editError);
 
   const save = () => {
@@ -368,9 +373,13 @@ function TrackEditor({ track, onSave, onCancel }) {
         autoFocus
         autoCorrect={false}
         returnKeyType="next"
+        // "Suivant" passe au champ Artiste sans fermer le clavier.
+        submitBehavior="submit"
+        onSubmitEditing={() => artistRef.current?.focus()}
         error={!name.trim() ? 'Obligatoire' : editError || undefined}
       />
       <TextField
+        ref={artistRef}
         label="Artiste"
         value={artist}
         onChangeText={(v) => { setArtist(v); setEditError(null); }}
@@ -380,7 +389,9 @@ function TrackEditor({ track, onSave, onCancel }) {
       />
       <View style={styles.editorActions}>
         <Button title="Annuler" variant="ghost" onPress={onCancel} style={styles.editorBtn} />
-        <Button title="Valider" onPress={save} disabled={!name.trim()} style={styles.editorBtn} />
+        {/* Secondaire : le dégradé reste réservé à l'action principale de
+            l'écran ("Analyser", dans la barre du bas). */}
+        <Button title="Valider" variant="secondary" onPress={save} disabled={!name.trim()} style={styles.editorBtn} />
       </View>
     </View>
   );
@@ -450,6 +461,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   rowSelected: { borderColor: colors.accentLine },
+  rowActions: { flexDirection: 'row' },
   editor: {
     gap: spacing.md,
     padding: spacing.md,
