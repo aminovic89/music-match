@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import StepProgress from '../../components/StepProgress';
 import { colors } from '../../theme';
+import useHardwareBack from '../../useHardwareBack';
 import IntentScreen from './IntentScreen';
 import ImportScreen from './ImportScreen';
 import DnaScreen from './DnaScreen';
@@ -61,6 +62,12 @@ export default function OnboardingNavigator({ token, initialStep, onComplete }) 
     }
   };
 
+  const backToIntent = () => { setStep(STEPS.INTENT); setError(null); };
+  const backToImport = () => setStep(STEPS.IMPORT);
+  // Retour Android : étape précédente ; à la première étape, comportement
+  // système (rien à quoi revenir).
+  useHardwareBack({ [STEPS.IMPORT]: backToIntent, [STEPS.DNA]: backToImport }[step]);
+
   // Chaque étape est un écran complet (Screen) ; la progression est
   // passée comme en-tête pour rester fixe en haut pendant le scroll.
   const progress = (
@@ -86,7 +93,7 @@ export default function OnboardingNavigator({ token, initialStep, onComplete }) 
           selected={selectedTracks}
           onSelectedChange={setSelectedTracks}
           onSubmit={handleTracksSubmit}
-          onBack={() => { setStep(STEPS.INTENT); setError(null); }}
+          onBack={backToIntent}
           loading={loading}
           error={error}
         />
@@ -97,7 +104,7 @@ export default function OnboardingNavigator({ token, initialStep, onComplete }) 
           header={progress}
           profile={musicProfile}
           onComplete={onComplete}
-          onBack={() => setStep(STEPS.IMPORT)}
+          onBack={backToImport}
         />
       )}
     </View>

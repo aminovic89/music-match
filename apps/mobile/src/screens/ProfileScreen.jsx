@@ -9,6 +9,7 @@ import ProfilePhoto from './ProfilePhoto';
 import { RadioGroup, RadioCard, RadioChip } from '../components/Choice';
 import { colors, spacing, fontSize, typography } from '../theme';
 import { apiClient } from '@music-match/shared';
+import useHardwareBack from '../useHardwareBack';
 
 const INTENTS = [
   { id: 'romantic', label: 'Une rencontre romantique', icon: '❤️' },
@@ -22,6 +23,7 @@ const GENDERS = [
 ];
 
 export default function ProfileScreen({ onBack }) {
+  useHardwareBack(onBack);
   const [form, setForm] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [loading, setLoading] = useState(false);
