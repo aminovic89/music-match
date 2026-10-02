@@ -8,7 +8,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.musicmatch.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -28,13 +28,26 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
       [
         "expo-image-picker",
         {
           "photosPermission": "Music Match accède à tes photos pour que tu puisses choisir ta photo de profil.",
           "cameraPermission": "Music Match utilise ta caméra pour prendre ta photo de profil.",
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#030712",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120
         }
       ]
     ],
