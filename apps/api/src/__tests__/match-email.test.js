@@ -43,6 +43,31 @@ describe('sendMatchEmail', () => {
     expect(axios.post.mock.calls[0][1].htmlContent).toContain('&lt;b&gt;Imen&lt;/b&gt;');
   });
 
+  it('fournit un bouton vers les matchs et une version texte', async () => {
+    axios.post.mockResolvedValue({});
+    const { sendMatchEmail } = loadEmailWithBrevo();
+
+    await sendMatchEmail(AMINE, { ...IMEN, first_name: '<b>Imen</b>' });
+
+    const { htmlContent, textContent } = axios.post.mock.calls[0][1];
+    expect(htmlContent).toMatch(/<a href="[^"]*\/matches"[^>]*>Voir le match et lui écrire<\/a>/);
+    expect(htmlContent).not.toContain('<b>Imen</b>');
+    expect(htmlContent).not.toMatch(/<img/);
+    // Le texte brut n'est pas du HTML : prénom non échappé, lien en clair
+    expect(textContent).toContain('<b>Imen</b> a aussi liké ton profil');
+    expect(textContent).toMatch(/Voir le match et lui écrire :\n\S+\/matches/);
+    expect(textContent).toContain('Ce match expire dans 48 h.');
+  });
+
+  it('salue sans prénom quand il manque', async () => {
+    axios.post.mockResolvedValue({});
+    const { sendMatchEmail } = loadEmailWithBrevo();
+
+    await sendMatchEmail({ ...AMINE, first_name: null }, IMEN);
+
+    expect(axios.post.mock.calls[0][1].textContent.startsWith('Bonjour,\n')).toBe(true);
+  });
+
   it('n\'appelle pas Brevo sans clé API', async () => {
     const { sendMatchEmail } = require('../services/email');
     await sendMatchEmail(AMINE, IMEN);

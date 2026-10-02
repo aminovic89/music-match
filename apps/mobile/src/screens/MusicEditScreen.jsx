@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { apiClient } from '@music-match/shared';
 import ImportScreen from './onboarding/ImportScreen';
 import DnaScreen from './onboarding/DnaScreen';
 import Screen, { ScreenHeader } from '../components/Screen';
-import { colors, spacing, typography } from '../theme';
+import { LoadingState } from '../components/States';
+import { colors } from '../theme';
 
 const STEPS = { IMPORT: 0, DNA: 1 };
 
@@ -83,10 +84,7 @@ export default function MusicEditScreen({ token, onBack }) {
   if (!ready) {
     return (
       <Screen header={header} center scroll={false}>
-        <View style={styles.loading} accessible accessibilityLabel="Chargement de ta musique">
-          <ActivityIndicator color={colors.accentText} size="large" />
-          <Text style={typography.subtitle}>Chargement de ta musique…</Text>
-        </View>
+        <LoadingState label="Chargement de ta musique…" />
       </Screen>
     );
   }
@@ -126,5 +124,4 @@ export default function MusicEditScreen({ token, onBack }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  loading: { alignItems: 'center', gap: spacing.md },
 });

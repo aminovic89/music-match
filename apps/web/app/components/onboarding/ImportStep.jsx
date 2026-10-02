@@ -39,6 +39,10 @@ export default function ImportStep({
   const [belowMinAttempted, setBelowMinAttempted] = useState(false);
   // Titre en cours de modification (un seul à la fois)
   const [editingId, setEditingId] = useState(null);
+  // À la fermeture de l'éditeur, le focus revient sur le bouton "Modifier"
+  // de la ligne (sinon il est perdu : le formulaire disparaît du DOM).
+  const listRef = useRef(null);
+  const restoreFocusIndex = useRef(null);
   const hasImportedSpotify = useRef(false);
   // Sélection vide à l'arrivée sur l'écran ? (valeur initiale uniquement)
   const startedEmpty = useRef(selected.length === 0);
@@ -153,6 +157,13 @@ export default function ImportStep({
     setEditingId(null);
     return null;
   };
+
+  useEffect(() => {
+    if (editingId !== null || restoreFocusIndex.current === null) return;
+    const index = restoreFocusIndex.current;
+    restoreFocusIndex.current = null;
+    listRef.current?.querySelectorAll('[data-edit-track]')[index]?.focus();
+  }, [editingId]);
 
   const handleSubmitClick = () => {
     if (selected.length < MIN_TRACKS) {
@@ -277,13 +288,19 @@ export default function ImportStep({
               Aucun titre pour l&apos;instant
             </p>
           ) : (
-            <ul className="flex flex-col gap-2">
-              {selected.map((track) => (track.track_id === editingId ? (
+            <ul ref={listRef} className="flex flex-col gap-2">
+              {selected.map((track, index) => (track.track_id === editingId ? (
                 <li key={track.track_id}>
                   <TrackEditor
                     track={track}
-                    onSave={(name, artist) => updateTrack(track.track_id, name, artist)}
-                    onCancel={() => setEditingId(null)}
+                    onSave={(name, artist) => {
+                      restoreFocusIndex.current = index;
+                      return updateTrack(track.track_id, name, artist);
+                    }}
+                    onCancel={() => {
+                      restoreFocusIndex.current = index;
+                      setEditingId(null);
+                    }}
                   />
                 </li>
               ) : (
@@ -293,22 +310,27 @@ export default function ImportStep({
                 >
                   <TrackGlyph icon={track.source === 'manual' ? 'pencil' : 'music'} />
                   <TrackInfo name={track.track_name} artist={track.artist_name} />
-                  <button
-                    type="button"
-                    onClick={() => setEditingId(track.track_id)}
-                    aria-label={`Modifier ${track.track_name}`}
-                    className={`flex size-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg ${focusRing}`}
-                  >
-                    <Icon name="pencil" className="size-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeTrack(track.track_id)}
-                    aria-label={`Retirer ${track.track_name}`}
-                    className={`flex size-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-danger ${focusRing}`}
-                  >
-                    <Icon name="x" className="size-5" />
-                  </button>
+                  {/* Actions groupées sans gouttière entre elles : deux cibles
+                      de 44px côte à côte laissent plus de place au titre à 375px. */}
+                  <span className="flex shrink-0">
+                    <button
+                      type="button"
+                      data-edit-track
+                      onClick={() => setEditingId(track.track_id)}
+                      aria-label={`Modifier ${track.track_name}`}
+                      className={`${rowAction} hover:text-fg ${focusRing}`}
+                    >
+                      <Icon name="pencil" className="size-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeTrack(track.track_id)}
+                      aria-label={`Retirer ${track.track_name}`}
+                      className={`${rowAction} hover:text-danger ${focusRing}`}
+                    >
+                      <Icon name="x" className="size-5" />
+                    </button>
+                  </span>
                 </li>
               )))}
             </ul>
@@ -356,6 +378,8 @@ function TrackEditor({ track, onSave, onCancel }) {
   return (
     <form
       onSubmit={save}
+      // Échap annule, comme le bouton "Annuler" du formulaire.
+      onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}
       aria-label={`Modifier ${track.track_name}`}
       className="flex flex-col gap-3 rounded-xl border border-accent-text bg-surface p-3"
     >
@@ -381,13 +405,22 @@ function TrackEditor({ track, onSave, onCancel }) {
         <Button type="button" variant="ghost" onClick={onCancel} fullWidth={false} className="flex-1 px-3">
           Annuler
         </Button>
-        <Button type="submit" disabled={!name.trim()} fullWidth={false} className="flex-1 px-3">
+        {/* Secondaire : le dégradé reste réservé à l'action principale de
+            l'écran ("Analyser", dans la barre du bas). */}
+        <Button type="submit" variant="secondary" disabled={!name.trim()} fullWidth={false} className="flex-1 px-3">
           Valider
         </Button>
       </div>
+      {/* Le focus reste dans le champ à la validation : l'erreur de doublon
+          est annoncée ici (aria-describedby seul ne la relit pas). */}
+      <p aria-live="assertive" className="sr-only">{editError}</p>
     </form>
   );
 }
+
+// Bouton icône d'une ligne de titre (cible 44px).
+const rowAction =
+  'flex size-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2';
 
 function TrackGlyph({ icon }) {
   return (

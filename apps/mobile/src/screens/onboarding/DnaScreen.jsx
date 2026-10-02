@@ -104,7 +104,8 @@ export default function DnaScreen({
 
       <View style={styles.cards}>
         {/* Métriques audio — seulement si on a de vraies audio features
-            (titres importés via Spotify) ; les titres Deezer/manuels n'en ont pas. */}
+            (l'enrichissement n'en trouve pas pour tous les titres). Une
+            mesure absente est masquée plutôt qu'affichée à 0. */}
         {profile.avg_energy != null && (
           <Card compact>
             <Section title="Audio">
@@ -113,22 +114,26 @@ export default function DnaScreen({
                 value={profile.avg_energy}
                 caption={energyLabel(Math.round(profile.avg_energy * 100))}
               />
-              <MetricBar
-                label="Positivité"
-                value={profile.avg_valence}
-                caption={valenceLabel(Math.round(profile.avg_valence * 100))}
-              />
-              <View
-                style={styles.metric}
-                accessible
-                accessibilityLabel={`BPM moyen : ${Math.round(profile.avg_tempo)}, ${tempoLabel(Math.round(profile.avg_tempo))}`}
-              >
-                <View style={styles.metricRow}>
-                  <Text style={styles.metricLabel}>BPM moy.</Text>
-                  <Text style={styles.metricValueStrong}>{Math.round(profile.avg_tempo)}</Text>
+              {profile.avg_valence != null && (
+                <MetricBar
+                  label="Positivité"
+                  value={profile.avg_valence}
+                  caption={valenceLabel(Math.round(profile.avg_valence * 100))}
+                />
+              )}
+              {profile.avg_tempo != null && (
+                <View
+                  style={styles.metric}
+                  accessible
+                  accessibilityLabel={`BPM moyen : ${Math.round(profile.avg_tempo)}, ${tempoLabel(Math.round(profile.avg_tempo))}`}
+                >
+                  <View style={styles.metricRow}>
+                    <Text style={styles.metricLabel}>BPM moy.</Text>
+                    <Text style={styles.metricValueStrong}>{Math.round(profile.avg_tempo)}</Text>
+                  </View>
+                  <Text style={styles.metricCaption}>{tempoLabel(Math.round(profile.avg_tempo))}</Text>
                 </View>
-                <Text style={styles.metricCaption}>{tempoLabel(Math.round(profile.avg_tempo))}</Text>
-              </View>
+              )}
             </Section>
           </Card>
         )}

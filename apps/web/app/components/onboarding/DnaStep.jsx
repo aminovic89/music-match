@@ -4,7 +4,6 @@ import Button from '../Button';
 import Card from '../Card';
 import Chip from '../Chip';
 import Section from '../Section';
-import FormAlert from '../Alert';
 import StickyBar from '../StickyBar';
 import { EmptyState } from '../States';
 import { moodInfo } from '../moods';
@@ -58,7 +57,7 @@ function MetricBar({ label, value, caption }) {
 // profil déjà analysé : les actions proposent de compléter ou corriger les
 // titres plutôt que de continuer l'onboarding.
 export default function DnaStep({
-  titleAs: Title = 'h1', profile, onComplete, onBack, onAddTracks, onEditTracks, notice,
+  titleAs: Title = 'h1', profile, onComplete, onBack, onAddTracks, onEditTracks,
 }) {
   if (!profile) {
     return (
@@ -81,11 +80,10 @@ export default function DnaStep({
         </p>
       </div>
 
-      <FormAlert tone="success" message={notice} className="mb-6" />
-
       <div className="flex flex-col gap-4">
-        {/* Métriques — seulement si on a de vraies audio features (titres
-            importés via Spotify) ; les titres Deezer/manuels n'en ont pas. */}
+        {/* Métriques — seulement si on a de vraies audio features
+            (l'enrichissement n'en trouve pas pour tous les titres). Une
+            mesure absente est masquée plutôt qu'affichée à 0. */}
         {profile.avg_energy != null && (
           <Card className="sm:p-6">
             <Section title="Audio">
@@ -95,18 +93,22 @@ export default function DnaStep({
                   value={profile.avg_energy}
                   caption={energyLabel(Math.round(profile.avg_energy * 100))}
                 />
-                <MetricBar
-                  label="Positivité"
-                  value={profile.avg_valence}
-                  caption={valenceLabel(Math.round(profile.avg_valence * 100))}
-                />
-                <div className="flex flex-col gap-1">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="text-sm font-medium text-fg">BPM moy.</span>
-                    <span className="text-base font-semibold tabular-nums text-fg">{Math.round(profile.avg_tempo)}</span>
+                {profile.avg_valence != null && (
+                  <MetricBar
+                    label="Positivité"
+                    value={profile.avg_valence}
+                    caption={valenceLabel(Math.round(profile.avg_valence * 100))}
+                  />
+                )}
+                {profile.avg_tempo != null && (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="text-sm font-medium text-fg">BPM moy.</span>
+                      <span className="text-base font-semibold tabular-nums text-fg">{Math.round(profile.avg_tempo)}</span>
+                    </div>
+                    <p className="text-xs text-muted">{tempoLabel(Math.round(profile.avg_tempo))}</p>
                   </div>
-                  <p className="text-xs text-muted">{tempoLabel(Math.round(profile.avg_tempo))}</p>
-                </div>
+                )}
               </div>
             </Section>
           </Card>
