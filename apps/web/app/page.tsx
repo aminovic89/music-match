@@ -12,7 +12,7 @@ import MatchPreview from './components/MatchPreview';
 const STEPS = [
   {
     title: 'Importe ta musique',
-    text: 'Connecte Spotify pour récupérer tes titres les plus écoutés, ou cherche et choisis au moins 10 titres que tu aimes.',
+    text: 'Cherche et choisis au moins 10 titres que tu aimes.',
   },
   {
     title: 'Découvre ton ADN musical',
@@ -84,7 +84,7 @@ export default function Home() {
               comme toi.
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-pretty text-muted sm:text-lg lg:mx-0">
-              Importe tes titres depuis Spotify ou choisis-les un à un, découvre ton ADN musical et
+              Choisis tes titres un à un, découvre ton ADN musical et
               rencontre des profils qui vibrent sur les mêmes sons que toi.
             </p>
             <div className="mx-auto mt-8 flex max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center lg:justify-start">

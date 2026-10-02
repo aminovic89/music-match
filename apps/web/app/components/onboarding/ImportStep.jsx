@@ -28,10 +28,8 @@ function isDuplicate(list, track) {
 
 export default function ImportStep({
   titleAs: Title = 'h1', token, selected, onSelectedChange, onSubmit, onBack, loading,
-  autoImportSpotify = true, backLabel = 'Retour', focusManualInput = false,
+  backLabel = 'Retour', focusManualInput = false,
 }) {
-  const [spotifyConnected, setSpotifyConnected] = useState(false);
-  const [importingSpotify, setImportingSpotify] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualArtist, setManualArtist] = useState('');
   const [manualSuggestions, setManualSuggestions] = useState([]);
@@ -43,47 +41,6 @@ export default function ImportStep({
   // de la ligne (sinon il est perdu : le formulaire disparaît du DOM).
   const listRef = useRef(null);
   const restoreFocusIndex = useRef(null);
-  const hasImportedSpotify = useRef(false);
-  // Sélection vide à l'arrivée sur l'écran ? (valeur initiale uniquement)
-  const startedEmpty = useRef(selected.length === 0);
-
-  const importSpotifyTopTracks = useCallback(async () => {
-    setImportingSpotify(true);
-    try {
-      const res = await fetch(`${API}/api/music/spotify/top-tracks`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok) {
-        onSelectedChange((prev) => {
-          const merged = [...prev];
-          for (const track of data.tracks || []) {
-            if (!isDuplicate(merged, track)) merged.push(track);
-          }
-          return merged;
-        });
-      }
-    } catch {}
-    finally { setImportingSpotify(false); }
-  }, [token, onSelectedChange]);
-
-  useEffect(() => {
-    if (!token) return;
-    fetch(`${API}/api/music/spotify/status`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        setSpotifyConnected(data.connected);
-        // Import auto uniquement à la demande ET sélection vide (onboarding) :
-        // en édition il réinjecterait les titres que l'utilisateur a retirés.
-        if (data.connected && autoImportSpotify && startedEmpty.current && !hasImportedSpotify.current) {
-          hasImportedSpotify.current = true;
-          importSpotifyTopTracks();
-        }
-      })
-      .catch(() => {});
-  }, [token, autoImportSpotify, importSpotifyTopTracks]);
 
   // Suggestions Deezer (recherche publique, pas besoin de compte connecté)
   // pour aider à la saisie manuelle. Recherche combinée titre + artiste,
@@ -184,37 +141,6 @@ export default function ImportStep({
       </div>
 
       <div className="flex flex-col gap-10">
-        {/* Connexion Spotify */}
-        <a
-          href={`${API}/api/auth/spotify`}
-          aria-busy={importingSpotify || undefined}
-          className={`group flex min-h-14 items-center gap-3 rounded-2xl border p-4 transition-colors ${
-            spotifyConnected
-              ? 'border-success-line bg-success-bg'
-              : 'border-line-strong bg-surface hover:border-accent-text'
-          } ${focusRing}`}
-        >
-          <span
-            aria-hidden="true"
-            className={`flex size-10 shrink-0 items-center justify-center rounded-full ${
-              spotifyConnected ? 'bg-success/15 text-success' : 'bg-accent/15 text-accent-text'
-            }`}
-          >
-            {importingSpotify ? <Spinner /> : <Icon name={spotifyConnected ? 'check' : 'music'} />}
-          </span>
-          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="text-base font-semibold text-fg">Connecter Spotify</span>
-            <span className={`text-sm ${spotifyConnected ? 'font-medium text-success' : 'text-muted'}`}>
-              {importingSpotify
-                ? 'Importation de tes titres...'
-                : spotifyConnected
-                  ? '✓ Connecté'
-                  : 'Importe automatiquement tes titres les plus écoutés'}
-            </span>
-          </span>
-          <Icon name="chevronRight" className="size-5 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
-        </a>
-
         {/* Saisie manuelle + suggestions Deezer en direct */}
         <Section title="Ou ajoute un titre manuellement">
           <div className="grid gap-3 sm:grid-cols-2">

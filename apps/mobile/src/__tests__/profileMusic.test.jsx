@@ -146,19 +146,7 @@ describe('MusicEditScreen', () => {
       track_id: `sp${i}`, track_name: `Spotify ${i}`, artist_name: `Artiste ${i}`, source: 'spotify',
     }));
 
-    // Spotify est connecté : /top-tracks renvoie les mêmes titres (+ un nouveau).
-    const mockSpotifyConnected = () => {
-      const topTracks = [...spotifyTracks, { track_id: 'sp-new', track_name: 'Nouveau', artist_name: 'X', source: 'spotify' }];
-      global.fetch = jest.fn((url) => {
-        const data = url.includes('/spotify/status')
-          ? { connected: true }
-          : url.includes('/spotify/top-tracks') ? { tracks: topTracks } : {};
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(data) });
-      });
-    };
-
-    it("un titre retiré n'est pas réimporté depuis Spotify et disparaît du payload", async () => {
-      mockSpotifyConnected();
+    it("un titre retiré n'est pas réimporté et disparaît du payload", async () => {
       apiClient.getMusicProfile.mockResolvedValue({ tracks: spotifyTracks });
       apiClient.saveTracks.mockResolvedValue({ profile: { top_artists: [] } });
       const r = await render(<MusicEditScreen token="tok" onBack={() => {}} />);
@@ -180,7 +168,6 @@ describe('MusicEditScreen', () => {
     });
 
     it("le retour depuis l'ADN ne réimporte pas les titres retirés", async () => {
-      mockSpotifyConnected();
       apiClient.getMusicProfile.mockResolvedValue({ tracks: spotifyTracks });
       apiClient.saveTracks.mockResolvedValue({ profile: { top_artists: [] } });
       const r = await render(<MusicEditScreen token="tok" onBack={() => {}} />);
