@@ -1,8 +1,9 @@
 'use client';
 
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import MessagesLayout from '@/components/chat/MessagesLayout';
+import { useChat, useConversationList, useOpenConversation } from '@/components/chat/useChat';
 import PageContainer from '@/components/PageContainer';
 import { LoadingState } from '@/components/States';
 
@@ -15,29 +16,28 @@ import { LoadingState } from '@/components/States';
 //   de /matches et de la célébration : l'API des matchs renvoie `user_id`
 //   mais pas l'id de conversation)
 //
-// TODO(web-frontend) — câblage, ce fichier ne contient que la présentation :
-// - `conversations` : GET /api/chat/conversations (+ loading / error / onRetry) ;
-// - conversation ouverte : GET /api/chat/conversations/:id/messages, socket
-//   join_conversation / send_message / new_message / typing / stop_typing ;
-// - passer à MessagesLayout `conversation={{ id, peer, currentUserId,
-//   messages, loading, error, peerTyping, connection, onSend, onRetry,
-//   onTyping, onStopTyping, ... }}` (contrat : ConversationView.jsx) ;
-// - total des non-lus → `unreadCount` de BottomNav (app/(app)/layout.jsx).
-const conversations = [];
+// Données et temps réel : voir components/chat/ChatProvider.jsx (monté dans
+// (app)/layout.jsx) et useChat.js.
 
 function Messages() {
+  const router = useRouter();
   const params = useSearchParams();
   const conversationId = params.get('c');
   const userId = params.get('u');
-  const selected =
-    conversations.find((c) => (conversationId ? c.id === conversationId : userId && c.user.id === userId)) || null;
+  const list = useConversationList();
+  const { refreshConversations } = useChat();
 
-  return (
-    <MessagesLayout
-      list={{ conversations }}
-      conversation={selected ? { id: selected.id, peer: selected.user, messages: [] } : null}
-    />
-  );
+  useEffect(() => {
+    if (!localStorage.getItem('mm_token')) router.replace('/login');
+    else refreshConversations();
+  }, [router, refreshConversations]);
+
+  const selected =
+    list.conversations.find((c) => (conversationId ? c.id === conversationId : userId && c.user.id === userId)) ||
+    null;
+  const conversation = useOpenConversation(selected);
+
+  return <MessagesLayout list={list} conversation={conversation} />;
 }
 
 export default function MessagesPage() {
