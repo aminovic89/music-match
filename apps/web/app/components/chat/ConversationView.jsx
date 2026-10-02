@@ -270,7 +270,7 @@ export default function ConversationView({
         {connection !== 'connected' && (
           <p className="flex items-center justify-center gap-2 border-b border-line bg-surface-2 px-4 py-2 text-center text-xs font-medium text-fg">
             {disconnected ? <Icon name="alert" className="size-4 shrink-0 text-danger" /> : <Spinner className="size-3" />}
-            {disconnected ? 'Hors connexion. L’envoi reprendra au retour du réseau.' : 'Reconnexion en cours…'}
+            {disconnected ? 'Hors connexion. Tu pourras écrire dès le retour du réseau.' : 'Reconnexion en cours…'}
           </p>
         )}
       </div>
