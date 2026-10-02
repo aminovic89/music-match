@@ -115,6 +115,10 @@ export default function MusicPage() {
     <PageContainer width="sm">
       {header}
       <FormAlert id="music-error" message={error} className="mb-6" />
+      {/* Confirmation rendue ici, dans une région live toujours montée :
+          insérée en même temps que la synthèse, elle ne serait pas annoncée
+          de façon fiable par les lecteurs d'écran. */}
+      <FormAlert tone="success" message={step === STEPS.DNA ? notice : null} className="mb-6" />
 
       {step === STEPS.IMPORT && (
         <ImportStep
@@ -136,7 +140,6 @@ export default function MusicPage() {
         <DnaStep
           titleAs="h2"
           profile={musicProfile}
-          notice={notice}
           onAddTracks={() => openEditor(true)}
           onEditTracks={() => openEditor(false)}
           onBack={() => openEditor(false)}
