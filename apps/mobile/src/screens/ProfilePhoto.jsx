@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Image, ActivityIndicator, Alert, ActionSheetIOS, Linking, Platform, StyleSheet } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { File } from 'expo-file-system';
 import { apiClient } from '@music-match/shared';
 import Avatar from '../components/Avatar';
 import Button from '../components/Button';
@@ -19,10 +20,18 @@ const PICKER_OPTIONS = {
 };
 
 // Partie fichier d'un FormData en React Native : { uri, name, type }.
+// Le fetch d'Expo (global depuis le SDK 57) ignore `uri` et exige `bytes()` :
+// on lit donc le fichier local nous-mêmes, sinon l'envoi échoue avec
+// "Unsupported FormDataPart implementation".
 function toFile(asset) {
   const type = asset.mimeType && asset.mimeType.startsWith('image/') ? asset.mimeType : 'image/jpeg';
   const ext = type.split('/')[1].replace('jpeg', 'jpg');
-  return { uri: asset.uri, name: asset.fileName || `photo.${ext}`, type };
+  return {
+    uri: asset.uri,
+    name: asset.fileName || `photo.${ext}`,
+    type,
+    bytes: () => new File(asset.uri).bytes(),
+  };
 }
 
 // Section "Photo" : choix galerie / appareil photo, envoi immédiat

@@ -66,7 +66,7 @@ describe('ProfileScreen - photo de profil', () => {
     expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalledWith(
       expect.objectContaining({ allowsEditing: true, aspect: [1, 1], quality: 0.7, mediaTypes: ['images'] })
     );
-    expect(apiClient.uploadPhoto).toHaveBeenCalledWith({ uri: asset.uri, name: 'p.jpg', type: 'image/jpeg' });
+    expect(apiClient.uploadPhoto).toHaveBeenCalledWith(expect.objectContaining({ uri: asset.uri, name: 'p.jpg', type: 'image/jpeg' }));
     expect(byLabel(r, 'Succès : Photo mise à jour')).toHaveLength(1);
     expect(control(r.root, 'button', 'Changer ma photo')).toBeTruthy();
     const img = r.root.findAll((n) => n.props.source && n.props.source.uri === 'https://blob/p.jpg');
@@ -78,7 +78,7 @@ describe('ProfileScreen - photo de profil', () => {
     apiClient.uploadPhoto.mockResolvedValue({ user: { ...user, avatar_url: 'https://blob/c.jpg' } });
     await choose(r, 'Prendre une photo');
     expect(ImagePicker.requestCameraPermissionsAsync).toHaveBeenCalled();
-    expect(apiClient.uploadPhoto).toHaveBeenCalledWith({ uri: 'file:///c.jpg', name: 'photo.jpg', type: 'image/jpeg' });
+    expect(apiClient.uploadPhoto).toHaveBeenCalledWith(expect.objectContaining({ uri: 'file:///c.jpg', name: 'photo.jpg', type: 'image/jpeg' }));
     expect(byLabel(r, 'Succès : Photo mise à jour')).toHaveLength(1);
   });
 
