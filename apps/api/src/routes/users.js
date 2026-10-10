@@ -3,7 +3,7 @@ const Joi = require('joi');
 const multer = require('multer');
 const db = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
-const { uploadProfilePhoto } = require('../services/storage');
+const { uploadProfilePhoto, deleteProfilePhoto } = require('../services/storage');
 
 const router = express.Router();
 
@@ -83,6 +83,9 @@ router.post('/me/photo', requireAuth, upload.single('photo'), async (req, res, n
       return res.status(400).json({ error: 'Aucune photo fournie (champ "photo")' });
     }
 
+    const previous = await db.query('SELECT avatar_url FROM users WHERE id = $1', [req.userId]);
+    const previousUrl = previous.rows[0]?.avatar_url;
+
     const avatarUrl = await uploadProfilePhoto(
       req.userId,
       req.file.buffer,
@@ -93,6 +96,8 @@ router.post('/me/photo', requireAuth, upload.single('photo'), async (req, res, n
       `UPDATE users SET avatar_url = $1 WHERE id = $2 RETURNING ${PUBLIC_FIELDS}`,
       [avatarUrl, req.userId]
     );
+
+    if (previousUrl && previousUrl !== avatarUrl) await deleteProfilePhoto(previousUrl);
 
     res.json({ user: result.rows[0] });
   } catch (err) {
